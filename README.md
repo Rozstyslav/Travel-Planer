@@ -582,15 +582,9 @@ External Art Institute API requests are mocked during automated tests.
 
 ## Postman collection
 
-The repository includes a Postman collection and a local environment:
+The repository includes a Postman collection:
 
-```text
-postman/
-├── TravelPlanner.postman_collection.json
-└── TravelPlanner.local.postman_environment.json
-```
-
-Import both files into Postman.
+https://rozstyslav-3153758.postman.co/workspace/Rostyk's-Workspace~d6a5c6f3-ce33-41b9-82ec-284f57e37dfa/collection/47122986-56e68a2c-6223-49e2-838b-f7940d29ddb7?action=share&source=copy-link&creator=47122986
 
 Set the following environment variables:
 
