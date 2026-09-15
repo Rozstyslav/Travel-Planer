@@ -1,662 +1,250 @@
-# Travel Planner API
+# Travel Planner
 
-A REST API for creating and managing travel projects and their places.
+Планувальник подорожей з англійським інтерфейсом: **країна → місто → цікаві місця → опис і фото → маршрут**.
+Інтерфейс працює на Django templates, CSS і JavaScript без збірки. Сервер — Django REST Framework, JWT, SQLite.
 
-Places are imported and validated using the external [Art Institute of Chicago API](https://api.artic.edu/docs/). Each place is identified by its external artwork ID.
-
-## Features
-
-### Travel projects
-
-* Create a travel project.
-* Create a project together with places in a single request.
-* List all projects.
-* Retrieve a single project.
-* Update project name, description, and start date.
-* Delete a project.
-* Prevent deleting a project if at least one place is marked as visited.
-
-### Project places
-
-* Add a place to an existing project.
-* Validate the place through the Art Institute of Chicago API.
-* List all places belonging to a project.
-* Retrieve a single place within a project.
-* Update place notes.
-* Mark a place as visited or not visited.
-* Prevent adding the same external place to one project more than once.
-* Limit each project to a maximum of 10 places.
-
-### Authentication
-
-* JWT access and refresh tokens.
-* Token refresh.
-* Token verification.
-* Refresh token blacklisting on logout.
-
-## Technology stack
-
-* Python 3.13
-* Django
-* Django REST Framework
-* Simple JWT
-* SQLite
-* Requests
-* Gunicorn
-* Docker
-* Art Institute of Chicago API
-
-## Project structure
+## Структура проєкту
 
 ```text
-TravelPlanner/
-├── TravelPlanner/
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-│
-├── travel/
-│   ├── api/
-│   │   ├── serializers.py
-│   │   ├── urls.py
-│   │   └── views.py
-│   │
-│   ├── clients/
-│   │   └── art_institute.py
-│   │
-│   ├── migrations/
+./                         # Корінь репозиторію (локально: tp/)
+├── backend/
+│   ├── config/              # settings, URLs, ASGI, WSGI
+│   ├── travel/
+│   │   ├── api/             # HTTP endpoints і серіалізатори
+│   │   ├── clients/         # Countries, Geoapify, Wikipedia
+│   │   ├── migrations/      # Історія схеми бази
+│   │   ├── models.py
+│   │   ├── services.py      # Правила роботи з маршрутами
+│   │   └── place_identity.py
 │   ├── tests/
-│   ├── admin.py
-│   ├── apps.py
-│   ├── exceptions.py
-│   ├── models.py
-│   └── services.py
-│
-├── postman/
-│   ├── TravelPlanner.postman_collection.json
-│   └── TravelPlanner.local.postman_environment.json
-│
-├── Dockerfile
-├── manage.py
-├── requirements.txt
-├── .dockerignore
-├── .gitignore
-└── README.md
+│   │   ├── unit/            # Клієнти й ідентичність місць
+│   │   ├── api/             # HTTP-контракти й авторизація
+│   │   ├── integration/     # Сервіси з ORM, міграції, доставка фронтенду
+│   │   └── fixtures.py
+│   ├── manage.py
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── .env.example
+├── frontend/
+│   ├── templates/travel/    # HTML
+│   ├── static/travel/       # JavaScript, CSS, зображення, шрифти
+│   ├── tests/e2e/           # Браузерні сценарії Playwright
+│   ├── package.json
+│   └── package-lock.json
+└── docs/
+    ├── api/                 # Postman collection
+    ├── previews/            # Приклади інтерфейсу
+    └── DESIGN.md
 ```
 
-## Data models
+Фронтенд має власний каталог і залежності для тестів. Django читає його шаблони та статику через `FRONTEND_DIR` у `backend/config/settings.py`; окремий сервер фронтенду чи збірка не потрібні. Адреси `/`, `/api/` та `/static/travel/` збережено.
+Докладніше: [backend/README.md](backend/README.md), [frontend/README.md](frontend/README.md).
 
-### TravelProject
+## Зовнішні API
 
-| Field         | Type     | Required                |
-| ------------- | -------- | ----------------------- |
-| `name`        | String   | Yes                     |
-| `description` | Text     | No                      |
-| `start_date`  | Date     | No                      |
-| `created_at`  | DateTime | Automatically generated |
-| `updated_at`  | DateTime | Automatically generated |
+| Сервіс | Призначення | Клієнт |
+| --- | --- | --- |
+| [Countries GraphQL](https://github.com/trevorblades/countries) | Назва країни, місцева назва, прапор, столиця, валюта, континент, мови | [countries.py](backend/travel/clients/countries.py) |
+| [Geoapify Geocoding](https://apidocs.geoapify.com/docs/geocoding/forward-geocoding/) | Пошук міст із фільтром країни | [geoapify.py](backend/travel/clients/geoapify.py) |
+| [Geoapify Places](https://apidocs.geoapify.com/docs/places/) | Пам’ятки, музеї, парки, кав’ярні, ресторани за координатами | той самий клієнт |
+| [Geoapify Place Details](https://apidocs.geoapify.com/docs/place-details/) | Перевірка місця перед збереженням, стабільний OSM ID | той самий клієнт |
+| [Wikipedia / MediaWiki](https://www.mediawiki.org/wiki/API:Page_info_in_search_results) | Англійські описи, зображення та посилання на джерела | [wikipedia.py](backend/travel/clients/wikipedia.py) |
 
-### ProjectPlace
+Art Institute integration removed. The old numeric `external_id` contract is no longer accepted.
 
-| Field            | Type        | Description                                        |
-| ---------------- | ----------- | -------------------------------------------------- |
-| `project`        | Foreign key | Parent travel project                              |
-| `external_id`    | Integer     | Artwork ID from the external API                   |
-| `title`          | String      | Artwork title retrieved from the external API      |
-| `artist_display` | Text        | Artist information retrieved from the external API |
-| `image_id`       | String      | External image identifier                          |
-| `notes`          | Text        | User notes                                         |
-| `visited`        | Boolean     | Whether the place was visited                      |
-| `created_at`     | DateTime    | Automatically generated                            |
-| `updated_at`     | DateTime    | Automatically generated                            |
+## Локальний запуск
 
-The combination of `project` and `external_id` is unique.
+### Поточний workspace у PyCharm (`tp`)
 
-## Local installation
-
-### 1. Clone the repository
-
-```bash
-git clone <repository-url>
-cd TravelPlanner
-```
-
-### 2. Create a virtual environment
-
-Windows:
+Корінь проєкту й Git — `C:\Users\Rostyk\PycharmProjects\tp`. Тут одразу розташовані `backend`, `frontend`, `docs` і налаштований Python у `.venv`. Запустіть із цього каталогу в PowerShell:
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\activate
+& .\.venv\Scripts\python.exe .\backend\manage.py runserver
 ```
 
-Linux or macOS:
+Якщо термінал уже в `backend`, еквівалентна команда:
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
+```powershell
+& ..\.venv\Scripts\python.exe manage.py runserver
 ```
 
-### 3. Install dependencies
+Відкрийте **http://127.0.0.1:8000/**. Якщо сервер уже працює на цій адресі, повторний запуск не потрібен. Завершуйте свій сервер через `Ctrl + C` перед перезапуском або використайте інший порт: `manage.py runserver 8001`.
 
-```bash
-python -m pip install --upgrade pip
+### Перший запуск в іншому середовищі
+
+Корінь репозиторію — каталог, який безпосередньо містить `backend`, `frontend` і цей `README.md`. Назва каталогу після клонування може бути будь-якою. Із цього каталогу, в активованому Python 3.13+ середовищі:
+
+```powershell
+cd backend
 python -m pip install -r requirements.txt
-```
-
-### 4. Apply migrations
-
-```bash
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+# Вкажіть GEOAPIFY_API_KEY у .env. Не перезаписуйте наявний налаштований .env.
 python manage.py migrate
-```
-
-### 5. Create a user
-
-JWT authentication uses standard Django users.
-
-```bash
-python manage.py createsuperuser
-```
-
-### 6. Start the development server
-
-```bash
 python manage.py runserver
 ```
 
-The API will be available at:
+Типові помилки після перенесення:
 
-```text
-http://127.0.0.1:8000/api/
+- `can't open file ... manage.py` або не знайдено `backend`: перевірте поточну папку; файл запуску відносно кореня — `backend/manage.py`.
+- `No module named django` або відкривається Microsoft Store: використайте Python налаштованого `.venv`, як у командах вище.
+- `No module named TravelPlanner`: застаріла конфігурація запуску; новий модуль налаштувань — `config.settings`, робоча папка — `backend`.
+- Порт `8000` зайнятий: перевірте вже запущений сайт або оберіть вільний порт.
+
+Відкрийте **http://127.0.0.1:8000/**. Без входу маршрути й закладки зберігаються в цьому браузері.
+Для серверних маршрутів увійдіть наявним Django-користувачем або створіть його через `python manage.py createsuperuser`.
+
+Ключ завантажується з `GEOAPIFY_API_KEY` середовища або локального `.env`. Змінна середовища має пріоритет.
+`.env` підтримує прості рядки `KEY=value`; виконання shell-команд та підстановка змінних не підтримуються.
+`.env` виключений із Git і Docker build context. Браузер звертається лише до Django, ключ йому не передається.
+Після зміни ключа перезапустіть сервер.
+
+## Нові endpoints для пошуку
+
+Пошук доступний без входу, з обмеженням 60 запитів/хвилину на IP. Записи маршрутів вимагають JWT.
+
+| Метод | Адреса | Параметри |
+| --- | --- | --- |
+| GET | `/api/countries/` | Список країн у `results` |
+| GET | `/api/countries/BR/` | Деталі країни за дволітерним кодом |
+| GET | `/api/cities/` | `q=Львів&country=UA&limit=6` |
+| GET | `/api/places/` | `latitude=49.8419&longitude=24.0316&categories=tourism.sights&radius=5000&limit=12&offset=0` |
+| GET | `/api/places/{place_id}/` | Перевірені геодані, опис, фото, статус Wikipedia |
+| GET | `/api/wikipedia/` | Один із параметрів: `title=Львів` або `q=Львівська ратуша` |
+
+`country` у пошуку міст необов’язковий. `limit`: міста 1–10, місця 1–20.
+`radius`: 100–50000 метрів, `offset`: 0–500. Координати — скінченні числа в межах широти/довготи.
+Підтримані категорії: `tourism.sights`, `tourism.attraction`, `entertainment.museum`, `leisure.park`, `catering.cafe`, `catering.restaurant`.
+
+Пошук місць повертає `results`, `offset`, `limit`, `has_more`. `has_more` означає, що поточна сторінка повна; наступна може бути порожньою.
+Пошук міст використовує `https://api.geoapify.com/v1/geocode/search`, адже `/v2/places` призначений для POI, а не геокодування назви міста.
+
+### Послідовність запитів
+
+1. Отримайте країну з `/api/countries/UA/`.
+2. Знайдіть місто через `/api/cities/?q=Львів&country=UA`.
+3. Передайте його `latitude` і `longitude` у `/api/places/`.
+4. Відкрийте `/api/places/{place_id}/` для опису та зображення.
+5. Додайте `place_id` у маршрут. Назва, координати й інші геодані повторно перевіряються на сервері.
+
+## Маршрути
+
+| Метод | Адреса | Дія |
+| --- | --- | --- |
+| GET / POST | `/api/projects/` | Список / створення |
+| GET / PUT / PATCH / DELETE | `/api/projects/{id}/` | Деталі / зміни / видалення |
+| GET / POST | `/api/projects/{id}/places/` | Зупинки / додавання |
+| GET / PUT / PATCH | `/api/projects/{id}/places/{place_pk}/` | Деталі зупинки / нотатки та відвідування |
+
+```json
+{
+  "name": "Вікенд у Львові",
+  "description": "Прогулянка старим містом",
+  "start_date": "2026-10-20",
+  "places": [{"place_id": "PLACE_ID_FROM_SEARCH", "notes": "Почати тут"}]
+}
 ```
 
-## Running with Docker
+Додавання зупинки:
 
-Build the Docker image:
-
-```bash
-docker build -t travel-planner .
+```json
+{"place_id": "PLACE_ID_FROM_SEARCH", "notes": "Піднятися на вежу"}
 ```
 
-Run the container:
+Оновлення зупинки:
 
-```bash
-docker run --rm -p 8000:8000 travel-planner
+```json
+{"notes": "Чудовий краєвид", "visited": true}
 ```
 
-The API will be available at:
+`ProjectPlace` містить `place_id`, `source_id`, `name`, `address`, `country_code`, `city`, `latitude`, `longitude`, `categories`, `description`, `image_url`, `wikipedia_url`, `wikipedia_title`, `wikipedia_match`, `notes`, `visited`, часові поля.
+`place_id` — зовнішній рядковий ідентифікатор. `id` / `{place_pk}` — локальний числовий ключ запису в маршруті.
 
-```text
-http://127.0.0.1:8000/api/
-```
+У маршруті максимум 10 місць. Створення з місцями атомарне. Повтори перевіряються за `place_id` і стабільним `source_id`: Geoapify може повертати різні координати всередині ID одного об’єкта.
+Подорож із відвіданими місцями захищена від видалення. Успадкований API використовує спільний простір для авторизованих користувачів; окремих власників маршрутів немає.
 
-### Persisting the SQLite database
+## JWT
 
-To keep the database between container restarts:
+- `POST /api/auth/token/` — `{"username": "...", "password": "..."}`.
+- `POST /api/auth/token/refresh/` — `{"refresh": "..."}`.
+- `POST /api/auth/token/verify/` — `{"token": "..."}`.
+- `POST /api/auth/logout/` — `{"refresh": "..."}`.
+
+Передайте `Authorization: Bearer <access>` до захищених endpoints. Фронтенд зберігає токени в `sessionStorage`, автоматично оновлює їх та виконує blacklist під час виходу.
+Гостьові маршрути не синхронізуються автоматично після входу.
+
+## Wikipedia і помилки
+
+Дані Wikipedia автоматично завантажуються для карток поблизу видимої частини сторінки (до двох запитів одночасно). Деталі та додавання місця використовують той самий результат без повторного запиту.
+Пряме англійське посилання з Geoapify дає `wikipedia_match=linked`. Пошуковий збіг дає `search` і явно позначений в інтерфейсі як пов’язана стаття, відповідність якої слід перевірити. Geoapify отримує `lang=en`, а описи завантажуються з англійської Wikipedia.
+Відсутня стаття — нормальний результат `found=false`. Недоступність Wikipedia не блокує збереження географічно перевіреного місця; деталі повертають `wikipedia_status=unavailable`.
+Якщо англійська стаття не має фото, використовуються зображення P18 із Wikidata або іншомовна стаття, прямо пов’язана з об’єктом у Geoapify. `image_source_url` зберігає джерело фото окремо від джерела опису. Коли фото не знайдено, картка показує відповідне повідомлення. У деталях місця прибрані окремі блоки про фото, авторів і ліцензії; джерела фото залишаються на картках.
+
+Координати в картках, деталях і маршрутах відкривають OpenStreetMap із маркером вибраного місця.
+
+Пошук міст показує головний результат із назвою області; інші однойменні населені пункти доступні в секції `Other matches`. Геокодування зберігає область у полі `region`.
+Для пошуку місць використовується умова Geoapify `named`: безіменні ділянки не витісняють іменовані парки. Назва міста більше не використовується як назва безіменного об’єкта; для таких об’єктів також не виконується пошук описів чи фото міста.
+
+Повторні записи пошуку об’єднуються за стабільною ідентичністю або однаковими варіантами назви в межах 150 метрів. Різні Wikidata-ідентифікатори й віддалені однойменні місця залишаються окремими. Пагінація враховує початкову кількість записів провайдера, а інтерфейс також прибирає повтори між сторінками. Стаття Wikipedia, знайдена для місця, має відповідати його назві: загальна стаття міста не використовується як опис чи фото пам’ятника.
+
+Останній резервний варіант — пошук точної назви (щонайменше два слова) у Wikimedia Commons. Такі фото мають `image_match=search` та явну позначку в інтерфейсі: відповідність місцю слід перевірити за джерелом.
+
+Відповіді Countries і Wikipedia кешуються на 24 години; Geoapify — на 15 хвилин у Django cache.
+Мережеві запити мають таймаут 12 секунд. Помилки не містять URL із ключем.
+
+| Код | Значення |
+| --- | --- |
+| 400 | Невалідні параметри або невідомі поля, включно зі старим `external_id` |
+| 401 | Немає дійсної авторизації |
+| 404 | Країну, місце або запис не знайдено |
+| 409 | Повтор, ліміт зупинок або захищене видалення |
+| 429 | Ліміт запитів до пошуку |
+| 503 | Сервіс недоступний або не налаштований; див. `provider` і `code` |
+
+## Перехід зі старої версії
+
+Міграція `0002_geographic_places` зберігає старі записи повністю в `TravelProject.archived_places`: ID, дані, нотатки, позначки відвідування й час.
+Після цього створюється нова таблиця географічних зупинок. Проєкти, користувачі й JWT залишаються.
+Архів доступний адміністратору в Django Admin. API проєкту показує `archived_place_count` та `archived_visited_count`; старі картини не видаються за географічні місця.
+Захист від видалення враховує відвідані записи в архіві.
+
+Перед застосуванням до існуючої бази зробіть резервну копію. Для цієї локальної бази копію збережено в кореневому `.test-artifacts/before-geography-*.sqlite3`.
+Зворотна міграція відновлює старі записи, але видаляє нові географічні зупинки — для повного повернення використовуйте резервну копію.
+Гостьові дані старого інтерфейсу залишаються в `tp-trips-v1` / `tp-saved-v1` localStorage; нова схема використовує ключі `v2`.
+
+## Перевірки
 
 ```powershell
-docker run --rm `
-  -p 8000:8000 `
-  -e SQLITE_PATH=/data/db.sqlite3 `
-  -v travel_data:/data `
-  travel-planner
+# Із каталогу backend/
+python manage.py test tests
+python manage.py test tests.unit
+python manage.py test tests.api
+python manage.py test tests.integration
+python manage.py makemigrations --check --dry-run
 ```
 
-Linux or macOS:
-
-```bash
-docker run --rm \
-  -p 8000:8000 \
-  -e SQLITE_PATH=/data/db.sqlite3 \
-  -v travel_data:/data \
-  travel-planner
-```
-
-The Django database configuration must support the optional `SQLITE_PATH` environment variable:
-
-```python
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.getenv(
-            "SQLITE_PATH",
-            BASE_DIR / "db.sqlite3",
-        ),
-    }
-}
-```
-
-### Create a superuser inside Docker
-
-Start a temporary container:
-
-```bash
-docker run --rm -it travel-planner python manage.py createsuperuser
-```
-
-When using a persistent database volume:
+Тести зовнішніх сервісів імітують відповіді: GraphQL errors, JSON, таймаути, ключ, відсутні дані, координати, кеш, дублі, атомарність, авторизація та перенесення архіву вперед/назад.
+Браузерна перевірка в іншому терміналі, при активному Django-сервері:
 
 ```powershell
-docker run --rm -it `
-  -e SQLITE_PATH=/data/db.sqlite3 `
-  -v travel_data:/data `
-  travel-planner `
-  python manage.py createsuperuser
+cd frontend
+npm ci
+npm run check
+npm test
 ```
 
-## JWT authentication
+Потрібні Node.js і встановлений Google Chrome. Версію Playwright зафіксовано в `package-lock.json`. Змінні `BASE_URL` і `BROWSER_CHANNEL` необов’язкові.
+Браузерні тести працюють в ізольованому контексті з імітованими відповідями, не створюють реальних серверних записів. Скріншоти в `docs/previews/` містять тестові приклади.
 
-### Obtain access and refresh tokens
+Postman: імпортуйте `docs/api/travel-planner.postman_collection.json`. Ключ Geoapify не потрібен у Postman — лише на Django-сервері.
 
-```http
-POST /api/auth/token/
-Content-Type: application/json
+## Docker та ресурси
+
+```powershell
+# Із кореня репозиторію
+docker build -f backend/Dockerfile -t travel-planner .
+docker run --rm -p 8000:8000 --env-file backend/.env travel-planner
 ```
 
-Request body:
-
-```json
-{
-  "username": "admin",
-  "password": "your-password"
-}
-```
-
-Example response:
-
-```json
-{
-  "refresh": "eyJ...",
-  "access": "eyJ..."
-}
-```
-
-Use the access token in protected requests:
-
-```http
-Authorization: Bearer <access-token>
-```
-
-### Refresh tokens
-
-```http
-POST /api/auth/token/refresh/
-Content-Type: application/json
-```
-
-```json
-{
-  "refresh": "eyJ..."
-}
-```
-
-### Verify a token
-
-```http
-POST /api/auth/token/verify/
-Content-Type: application/json
-```
-
-```json
-{
-  "token": "eyJ..."
-}
-```
-
-### Logout
-
-```http
-POST /api/auth/logout/
-Content-Type: application/json
-```
-
-```json
-{
-  "refresh": "eyJ..."
-}
-```
-
-Logout blacklists the supplied refresh token. An existing access token remains valid until its expiration time.
-
-## API endpoints
-
-All project and place endpoints require:
-
-```http
-Authorization: Bearer <access-token>
-```
-
-### Authentication endpoints
-
-| Method | Endpoint                   | Description                      |
-| ------ | -------------------------- | -------------------------------- |
-| `POST` | `/api/auth/token/`         | Obtain access and refresh tokens |
-| `POST` | `/api/auth/token/refresh/` | Refresh JWT tokens               |
-| `POST` | `/api/auth/token/verify/`  | Verify a token                   |
-| `POST` | `/api/auth/logout/`        | Blacklist a refresh token        |
-
-### Project endpoints
-
-| Method   | Endpoint                      | Description                |
-| -------- | ----------------------------- | -------------------------- |
-| `POST`   | `/api/projects/`              | Create a project           |
-| `GET`    | `/api/projects/`              | List projects              |
-| `GET`    | `/api/projects/{project_id}/` | Retrieve a project         |
-| `PUT`    | `/api/projects/{project_id}/` | Fully update a project     |
-| `PATCH`  | `/api/projects/{project_id}/` | Partially update a project |
-| `DELETE` | `/api/projects/{project_id}/` | Delete a project           |
-
-### Place endpoints
-
-| Method  | Endpoint                                        | Description              |
-| ------- | ----------------------------------------------- | ------------------------ |
-| `POST`  | `/api/projects/{project_id}/places/`            | Add a place              |
-| `GET`   | `/api/projects/{project_id}/places/`            | List project places      |
-| `GET`   | `/api/projects/{project_id}/places/{place_id}/` | Retrieve a place         |
-| `PUT`   | `/api/projects/{project_id}/places/{place_id}/` | Update a place           |
-| `PATCH` | `/api/projects/{project_id}/places/{place_id}/` | Partially update a place |
-
-Deleting a single place is not included because it is not required by the project specification.
-
-## Request examples
-
-### Create an empty project
-
-```http
-POST /api/projects/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "Chicago Trip",
-  "description": "Visit artworks in Chicago",
-  "start_date": "2026-08-15",
-  "places": []
-}
-```
-
-### Create a project with places
-
-```http
-POST /api/projects/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "Chicago Art Trip",
-  "description": "Project created with imported places",
-  "start_date": "2026-09-01",
-  "places": [
-    {
-      "external_id": 27992,
-      "notes": "Visit this artwork first"
-    },
-    {
-      "external_id": 16568,
-      "notes": "Visit this artwork second"
-    }
-  ]
-}
-```
-
-Every external ID is validated through the Art Institute API before the project is stored.
-
-If any external place does not exist, the project and its places are not created.
-
-### Add a place to a project
-
-```http
-POST /api/projects/1/places/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "external_id": 27992,
-  "notes": "Added after project creation"
-}
-```
-
-### Update a project
-
-```http
-PATCH /api/projects/1/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "name": "Updated Chicago Trip",
-  "start_date": "2026-10-01"
-}
-```
-
-### Update place notes
-
-```http
-PATCH /api/projects/1/places/1/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "notes": "Updated notes"
-}
-```
-
-### Mark a place as visited
-
-```http
-PATCH /api/projects/1/places/1/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "visited": true
-}
-```
-
-### Update notes and visited status
-
-```http
-PATCH /api/projects/1/places/1/
-Authorization: Bearer <access-token>
-Content-Type: application/json
-```
-
-```json
-{
-  "notes": "Already viewed",
-  "visited": true
-}
-```
-
-## Business rules
-
-### Maximum number of places
-
-A project can contain no more than 10 places.
-
-Attempting to create or add an eleventh place returns an error.
-
-### Duplicate places
-
-The same external place cannot be added to the same project more than once.
-
-The uniqueness rule is enforced both in the service layer and through a database constraint.
-
-### External API validation
-
-Before a place is stored, the application requests the corresponding artwork from:
-
-```text
-https://api.artic.edu/api/v1/artworks/{external_id}
-```
-
-The following fields are cached locally:
-
-* `external_id`
-* `title`
-* `artist_display`
-* `image_id`
-
-### Project deletion
-
-A project cannot be deleted if any of its places has:
-
-```json
-{
-  "visited": true
-}
-```
-
-In that case, the API returns:
-
-```text
-409 Conflict
-```
-
-## HTTP status codes
-
-| Status                    | Meaning                                        |
-| ------------------------- | ---------------------------------------------- |
-| `200 OK`                  | Successful retrieval or update                 |
-| `201 Created`             | Project or place created                       |
-| `204 No Content`          | Project deleted                                |
-| `400 Bad Request`         | Invalid request body or invalid external place |
-| `401 Unauthorized`        | Missing or invalid JWT access token            |
-| `404 Not Found`           | Project or place does not exist                |
-| `409 Conflict`            | Business rule violation                        |
-| `503 Service Unavailable` | Art Institute API is unavailable               |
-
-## Tests
-
-Run all tests:
-
-```bash
-python manage.py test
-```
-
-Run only application tests:
-
-```bash
-python manage.py test travel.tests
-```
-
-Run tests using Docker:
-
-```bash
-docker run --rm travel-planner python manage.py test travel.tests
-```
-
-The test suite covers:
-
-* Project creation.
-* Project creation with places.
-* Project listing and retrieval.
-* Project updates.
-* Project deletion.
-* Deletion protection for projects with visited places.
-* Adding places.
-* External place validation.
-* Duplicate place protection.
-* Maximum place limit.
-* Updating notes and visited status.
-* JWT authentication.
-* Token refresh and verification.
-* Refresh token blacklisting.
-* External API error handling.
-* Transactional project creation.
-
-External Art Institute API requests are mocked during automated tests.
-
-## Postman collection
-
-The repository includes a Postman collection:
-
-https://rozstyslav-3153758.postman.co/workspace/Rostyk's-Workspace~d6a5c6f3-ce33-41b9-82ec-284f57e37dfa/collection/47122986-56e68a2c-6223-49e2-838b-f7940d29ddb7?action=share&source=copy-link&creator=47122986
-
-Set the following environment variables:
-
-| Variable        | Example                   |
-| --------------- | ------------------------- |
-| `base_url`      | `http://127.0.0.1:8000`   |
-| `username`      | `admin`                   |
-| `password`      | Your Django user password |
-| `access_token`  | Automatically populated   |
-| `refresh_token` | Automatically populated   |
-| `project_id`    | Automatically populated   |
-| `place_id`      | Automatically populated   |
-
-Run the `Obtain JWT Tokens` request first.
-
-Post-response scripts automatically save:
-
-* Access token.
-* Refresh token.
-* Created project ID.
-* Created place ID.
-
-The collection contains:
-
-* All authentication endpoints.
-* All project endpoints.
-* All place endpoints.
-* Successful use cases.
-* Common validation and error cases.
-
-## Main design decisions
-
-### Service layer
-
-Business logic is kept in `travel/services.py` instead of views or serializers.
-
-This includes:
-
-* Creating projects with places.
-* Adding places.
-* Enforcing the 10-place limit.
-* Preventing duplicate places.
-* Updating project places.
-* Protecting projects with visited places from deletion.
-
-### External API client
-
-Communication with the Art Institute API is isolated in:
-
-```text
-travel/clients/art_institute.py
-```
-
-This keeps external HTTP logic separate from database and API endpoint logic.
-
-### Transactions
-
-Project creation with places is transactional.
-
-If validation of any place fails, no project or place records are stored.
-
-### Two-model approach
-
-The project uses two domain models:
-
-```text
-TravelProject
-ProjectPlace
-```
-
-A separate global `Place` model is unnecessary because the specification treats places as resources belonging to individual projects.
-
-## License
-
-This project is provided as a technical assignment and educational example.
+Gunicorn обслуговує API та HTML. Для статичних файлів налаштуйте вебсервер або static middleware та виконайте `python manage.py collectstatic` із `backend/`: файли збираються в `backend/staticfiles/`. Django `runserver` обслуговує їх автоматично.
+Геодані: Geoapify / © OpenStreetMap contributors, ODbL. Описи: автори Wikipedia, CC BY-SA 4.0; фотографії мають окремі ліцензії на сторінках файлів, посилання на джерело показані в UI.
+Візуальний напрям та ресурси: [DESIGN.md](docs/DESIGN.md).

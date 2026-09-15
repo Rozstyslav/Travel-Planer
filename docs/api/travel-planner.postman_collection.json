@@ -1,0 +1,468 @@
+{
+  "info": {
+    "name": "Travel Planner — Countries, Geoapify, Wikipedia",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Geographic travel API. Geoapify key stays on the Django server. Discovery is public; project operations use JWT."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "country",
+      "value": "UA",
+      "type": "string"
+    },
+    {
+      "key": "city",
+      "value": "Львів",
+      "type": "string"
+    },
+    {
+      "key": "latitude",
+      "value": "49.8419",
+      "type": "string"
+    },
+    {
+      "key": "longitude",
+      "value": "24.0316",
+      "type": "string"
+    },
+    {
+      "key": "place_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "project_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "project_place_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Obtain tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/auth/token/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { const t = pm.response.json(); pm.collectionVariables.set(\"access_token\", t.access); pm.collectionVariables.set(\"refresh_token\", t.refresh); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/auth/token/refresh/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { const t = pm.response.json(); pm.collectionVariables.set(\"access_token\", t.access); if(t.refresh) pm.collectionVariables.set(\"refresh_token\", t.refresh); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify access",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/auth/token/verify/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{access_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/auth/logout/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Discovery",
+      "item": [
+        {
+          "name": "Countries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/countries/"
+          }
+        },
+        {
+          "name": "Country details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/countries/{{country}}/"
+          }
+        },
+        {
+          "name": "Search cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/cities/?q={{city}}&country={{country}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(pm.response.code === 200) { const c = pm.response.json().results[0]; if(c) { pm.collectionVariables.set(\"latitude\", c.latitude); pm.collectionVariables.set(\"longitude\", c.longitude); } }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search places",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/places/?latitude={{latitude}}&longitude={{longitude}}&categories=tourism.sights&radius=5000&limit=12&offset=0"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(pm.response.code === 200) { const p = pm.response.json().results[0]; if(p) pm.collectionVariables.set(\"place_id\", p.place_id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place details + Wikipedia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/places/{{place_id}}/"
+          }
+        },
+        {
+          "name": "Wikipedia exact article",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/wikipedia/?title={{city}}"
+          }
+        },
+        {
+          "name": "Wikipedia search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/wikipedia/?q={{city}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "List projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/projects/"
+          }
+        },
+        {
+          "name": "Create project with place",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/projects/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Вікенд у Львові\",\n  \"description\": \"Прогулянка старим містом\",\n  \"start_date\": \"2026-10-20\",\n  \"places\": [\n    {\n      \"place_id\": \"{{place_id}}\",\n      \"notes\": \"Почати тут\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(pm.response.code === 201) { const p = pm.response.json(); pm.collectionVariables.set(\"project_id\", p.id); if(p.places.length) pm.collectionVariables.set(\"project_place_id\", p.places[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Project details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/projects/{{project_id}}/"
+          }
+        },
+        {
+          "name": "Update project",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/projects/{{project_id}}/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Нові ідеї для подорожі\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List project places",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/projects/{{project_id}}/places/"
+          }
+        },
+        {
+          "name": "Add another place (change place_id first)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/projects/{{project_id}}/places/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"place_id\": \"{{place_id}}\",\n  \"notes\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(pm.response.code === 201) pm.collectionVariables.set(\"project_place_id\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Place in project",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/projects/{{project_id}}/places/{{project_place_id}}/"
+          }
+        },
+        {
+          "name": "Visit and add note",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/projects/{{project_id}}/places/{{project_place_id}}/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Чудовий краєвид\",\n  \"visited\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Unmark visit",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/projects/{{project_id}}/places/{{project_place_id}}/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visited\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete project without visited places",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/api/projects/{{project_id}}/"
+          }
+        }
+      ]
+    }
+  ]
+}

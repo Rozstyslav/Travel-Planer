@@ -1,0 +1,13 @@
+{
+  "name": "travel-planner-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Travel Planner templates, static assets and browser tests",
+  "scripts": {
+    "check": "node --check static/travel/app.js",
+    "test": "node tests/e2e/browser-smoke.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
