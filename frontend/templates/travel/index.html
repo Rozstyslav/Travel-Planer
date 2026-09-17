@@ -15,13 +15,20 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <div class="site-shell">
     <header class="site-header">
-      <a href="#discover" class="brand" aria-label="Travel Planner — home"><span class="brand-mark" aria-hidden="true">✳</span><span>travel<span class="brand-second">planner</span></span><span class="brand-dot">®</span></a>
+      <a href="#discover" class="brand" aria-label="Travel Planner — home">
+        <span class="brand-mark" aria-hidden="true">✳</span>
+        <span>travel<span class="brand-second">planner</span></span>
+        <span class="brand-dot">®</span></a>
       <nav class="main-nav" aria-label="Main navigation">
         <a href="#discover" data-nav="discover" class="active">Discover<span class="nav-dot"></span></a>
         <a href="#trips" data-nav="trips">Trips<span class="nav-dot"></span></a>
         <a href="#saved" data-nav="saved">Saved <span id="saved-count" class="nav-count">0</span><span class="nav-dot"></span></a>
       </nav>
-      <button class="account-button" id="account-button"><span class="account-icon" aria-hidden="true">↗</span><span id="account-label">Sign in</span></button>
+      <button class="account-button" id="account-button">
+        <span class="account-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M6 18 18 6M6 6h12v12"/></svg>
+        </span>
+        <span id="account-label">Sign in</span></button>
     </header>
 
     <main id="main" tabindex="-1">
@@ -35,9 +42,30 @@
             <div class="hero-note"><span class="note-line"></span><p>Your next story<br>starts with one place.</p><span class="hand-arrow" aria-hidden="true">⤴</span></div>
           </div>
           <div class="hero-visual">
-            <div class="photo-frame"><img class="hero-photo" src="{% static 'travel/images/chicago.jpg' %}" width="1100" height="1300" alt="The historic Chicago Theatre sign among city buildings" fetchpriority="high"><div class="photo-shade"></div><span class="photo-coordinate">CHICAGO, ILLINOIS · 41.88°N 87.63°W</span><div class="photo-caption"><span>START SOMEWHERE BEAUTIFUL</span><p>Meet me<br><i>in a new city.</i></p><a href="#collection" class="round-link" aria-label="Find a city for your trip">↗</a></div></div>
+            <div class="photo-frame">
+              <img class="hero-photo" src="{% static 'travel/images/chicago.jpg' %}" width="1100" height="1300" alt="The historic Chicago Theatre sign among city buildings" fetchpriority="high">
+              <div class="photo-shade"></div>
+              <span class="photo-coordinate">CHICAGO, ILLINOIS · 41.88°N 87.63°W</span>
+              <div class="photo-caption"><span>START SOMEWHERE BEAUTIFUL</span>
+                <p>Meet me<br><i>in a new city.</i></p>
+                <a href="#collection" class="round-link" aria-label="Find a city for your trip">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 18 18 6M6 6h12v12"/></svg>
+                </a>
+              </div>
+            </div>
             <div class="travel-stamp" aria-hidden="true"><span>COLLECT MOMENTS</span><b>✳</b><span>MAKE MEMORIES · EXPLORE</span></div>
-            <a class="art-postcard destination-postcard" href="#collection"><span class="postcard-globe" aria-hidden="true">◎</span><div><span>COUNTRIES · CITIES · DISCOVERIES</span><p>The world is closer than you think. <b>↗</b></p></div></a>
+            <a class="art-postcard destination-postcard" href="#collection">
+              <svg class="postcard-globe" viewBox="0 0 160 112" aria-hidden="true" focusable="false">
+                <circle class="globe-fill" cx="80" cy="56" r="36"/>
+                <g class="globe-grid"><circle cx="80" cy="56" r="36"/><ellipse cx="80" cy="56" rx="17" ry="36"/><path d="M44 56h72M49 38q31 13 62 0M49 74q31-13 62 0M80 20v72"/></g>
+                <ellipse class="globe-route" cx="80" cy="56" rx="65" ry="21" transform="rotate(-28 80 56)"/>
+                <circle class="globe-stop" cx="29" cy="80" r="4"/>
+                <path class="globe-pin" d="M114 22a8 8 0 0 1 16 0c0 6-8 14-8 14s-8-8-8-14Z"/>
+                <circle class="globe-pin-center" cx="122" cy="22" r="2.5"/>
+                <path class="globe-grid" d="M26 22v10m-5-5h10M132 82v8m-4-4h8"/>
+              </svg>
+              <div><span class="postcard-kicker">A WORLD TO DISCOVER</span><p>The world is closer than you think.</p><span class="postcard-action">Find your next stop <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 18 18 6M6 6h12v12"/></svg></span></div>
+            </a>
             <span class="visual-index">01 / UNFORGETTABLE DISCOVERIES</span>
           </div>
         </div>
@@ -57,7 +85,7 @@
         </section>
 
         <section class="journey-section section-space" aria-labelledby="journey-heading"><div class="journey-heading"><p class="eyebrow">02 / FROM AN IDEA TO A JOURNEY</p><h2 id="journey-heading">Great journeys<br>begin with <em>“let’s go.”</em></h2><button class="button button-dark" data-action="create-trip">Let’s make a plan <span aria-hidden="true">↗</span></button></div><div class="journey-steps"><article><span class="step-number">01</span><div><h3>Find what moves you</h3><p>Choose a country, find a city, and discover places with stories to tell.</p></div><span aria-hidden="true">↗</span></article><article><span class="step-number">02</span><div><h3>Make it your journey</h3><p>Add up to 10 stops, pick a date, and jot down your ideas.</p></div><span aria-hidden="true">↗</span></article><article><span class="step-number">03</span><div><h3>Be in the moment</h3><p>Mark places as visited and leave notes. The best memories are in the details.</p></div><span aria-hidden="true">↗</span></article></div></section>
-        <section class="closing-banner"><span class="closing-star" aria-hidden="true">✳</span><p>Leave room for the unexpected.<br><em>Start with a little curiosity.</em></p><button class="round-link" data-action="create-trip" aria-label="Create your first trip">↗</button></section>
+        <section class="closing-banner"><span class="closing-star" aria-hidden="true">✳</span><p>Leave room for the unexpected.<br><em>Start with a little curiosity.</em></p><button class="round-link" data-action="create-trip" aria-label="Create your first trip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 18 18 6M6 6h12v12"/></svg></button></section>
       </section>
 
       <section id="trips-view" class="view inner-view" hidden aria-labelledby="trips-heading"><div class="section-heading"><div><p class="eyebrow">YOUR SPACE TO EXPLORE</p><h1 id="trips-heading" class="page-title">Adventures <em>ahead.</em></h1></div><button class="button button-dark" data-action="create-trip">New trip <span aria-hidden="true">+</span></button></div><div class="workspace-note" id="workspace-note"></div><div class="trips-toolbar"><div class="filter-group" role="group" aria-label="Trip status"><button class="filter active" data-trip-filter="all" aria-pressed="true">All</button><button class="filter" data-trip-filter="planned" aria-pressed="false">Planned</button><button class="filter" data-trip-filter="complete" aria-pressed="false">Visited</button></div><span id="trip-total" class="muted"></span></div><div id="trips-grid" class="trips-grid" aria-live="polite"></div></section>

@@ -146,17 +146,6 @@
 .art-card .detail-caption .text-link {
   font-size: 9px;
 }
-.destination-postcard {
-  background: var(--lime);
-  padding: 15px;
-}
-.postcard-globe {
-  font-size: 85px !important;
-  text-align: center;
-  line-height: 1.2;
-  display: block !important;
-  color: var(--olive);
-}
 .photo-caption i {
   font-size: 35px;
 }
@@ -420,7 +409,8 @@ em {
   place-items: center;
   border: 1px solid #bbc0b0;
   border-radius: 50%;
-  font-size: 19px;
+  flex-shrink: 0;
+  line-height: 1;
 }
 .hero {
   display: grid;
@@ -618,13 +608,32 @@ em {
   width: 48px;
   height: 48px;
   border-radius: 50%;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
   font-size: 25px;
   background: transparent;
+}
+.round-link,
+.account-icon {
   transition:
     transform 0.2s,
     background 0.2s;
 }
-.round-link:hover {
+.round-link svg,
+.account-icon svg {
+  display: block;
+  width: 50%;
+  height: 50%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.round-link:hover,
+.account-button:hover .account-icon,
+.account-button:focus-visible .account-icon {
   transform: rotate(15deg);
   background: #ffffff20;
 }
@@ -692,6 +701,69 @@ em {
 }
 .art-postcard b {
   float: right;
+}
+.destination-postcard {
+  border: 1px solid #d8ddcb;
+  border-radius: 5px;
+}
+.postcard-globe {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #e8edda;
+  border-radius: 3px;
+}
+.globe-fill {
+  fill: var(--lime);
+}
+.globe-grid,
+.globe-route {
+  fill: none;
+  stroke: var(--olive);
+  stroke-width: 1.2;
+}
+.globe-route {
+  stroke: var(--ink);
+  stroke-dasharray: 3 4;
+}
+.globe-stop,
+.globe-pin {
+  fill: var(--ink);
+}
+.globe-pin-center {
+  fill: var(--paper);
+}
+.destination-postcard .postcard-kicker {
+  font-size: 6.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.art-postcard.destination-postcard p {
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.15;
+  margin: 7px 0 10px;
+}
+.destination-postcard .postcard-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 7px;
+  font-size: 8px;
+  letter-spacing: 0;
+}
+.postcard-action svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .visual-index {
   position: absolute;
@@ -1817,6 +1889,12 @@ body.modal-open {
   .art-postcard p {
     font-size: 8px;
   }
+  .art-postcard.destination-postcard {
+    top: 150px;
+  }
+  .art-postcard.destination-postcard p {
+    font-size: 16px;
+  }
   .hero-description {
     font-size: 11px;
   }
@@ -1937,7 +2015,6 @@ body.modal-open {
   .account-icon {
     width: 28px;
     height: 28px;
-    font-size: 16px;
   }
   .main-nav {
     position: absolute;
@@ -2030,6 +2107,12 @@ body.modal-open {
   .art-postcard p {
     font-size: 9px;
   }
+  .art-postcard.destination-postcard {
+    top: 80px;
+  }
+  .destination-postcard .postcard-globe {
+    height: 72px;
+  }
   .photo-caption {
     left: 25px;
     bottom: 30px;
@@ -2039,7 +2122,7 @@ body.modal-open {
     font-size: 34px;
   }
   .photo-caption i {
-    font-size: 39px;
+    font-size: clamp(28px, 8vw, 36px);
   }
   .photo-caption > span {
     font-size: 7px;
