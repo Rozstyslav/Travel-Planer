@@ -17,6 +17,8 @@ const fs = require("node:fs");
   page.on("pageerror", (e) => errors.push(e.message));
   const base = process.env.BASE_URL || "http://127.0.0.1:8000";
   const output = path.resolve(__dirname, "../../../docs/previews");
+  // Full-page captures can include fixed elements positioned above the viewport.
+  const screenshotStyle = ".skip-link:not(:focus) { visibility: hidden; }";
   fs.mkdirSync(output, { recursive: true });
   const city = {
     place_id: "city-1",
@@ -52,6 +54,7 @@ const fs = require("node:fs");
     currency: "UAH",
     languages: [{ name: "Ukrainian", native: "Українська" }],
   };
+  const france = { ...country, code: "FR", name: "France", emoji: "🇫🇷", capital: "Paris", currency: "EUR" };
   const serverProject = {
     id: 77,
     name: "Shared trip",
@@ -61,6 +64,7 @@ const fs = require("node:fs");
   };
   let refreshRequests = 0;
   let placeQueries = [];
+  const placeSorts = [];
   let failCities = false;
   let detailRequests = 0;
   await page.route("https://upload.wikimedia.org/test-place.png", (route) =>
@@ -82,8 +86,9 @@ const fs = require("node:fs");
         body: JSON.stringify(body),
       });
     if (url.pathname === "/api/countries/")
-      return reply(200, { results: [country] });
+      return reply(200, { results: [country, france] });
     if (url.pathname === "/api/countries/UA/") return reply(200, country);
+    if (url.pathname === "/api/countries/FR/") return reply(200, france);
     if (url.pathname === "/api/cities/")
       return failCities
         ? reply(503, { provider: "Geoapify", code: "provider_unavailable" })
@@ -108,6 +113,7 @@ const fs = require("node:fs");
           });
     if (url.pathname === "/api/places/") {
       placeQueries.push(url.searchParams.get("categories"));
+      placeSorts.push(url.searchParams.get("sort"));
       return reply(200, {
         results: [
           { ...place, image_url: "", description: "" },
@@ -166,6 +172,19 @@ const fs = require("node:fs");
     await page.goto(base);
     await page.locator("#country-info strong").waitFor();
     assert.match(await page.locator("#country-info").textContent(), /UAH/);
+    await page.evaluate(() => document.fonts.ready);
+    assert.ok(await page.evaluate(() => document.fonts.check('18px "Country Flags"', '🇺🇦')));
+    assert.match(await page.locator('#country-select option[value="FR"]').textContent(), /🇫🇷/);
+    await page.locator("#country-select").focus();
+    await page.keyboard.press("Home");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Tab");
+    await page.waitForFunction(() => document.querySelector("#country-info").textContent.includes("EUR"));
+    assert.equal(await page.locator(".country-flag").textContent(), "🇫🇷");
+    await page.locator("#country-select").selectOption("");
+    assert.match(await page.locator("#country-info").textContent(), /around the world/);
+    await page.locator("#country-select").selectOption("UA");
+    await page.waitForFunction(() => document.querySelector("#country-info").textContent.includes("UAH"));
     await page.locator("#city-query").fill("Lviv");
     await page.locator("#destination-form button").click();
     await page.locator('.city-primary [data-action="select-city"]').waitFor();
@@ -206,11 +225,17 @@ const fs = require("node:fs");
       "Duplicate provider records show one card",
     );
     assert.equal(placeQueries[0], "tourism.sights");
+    assert.equal(placeSorts[0], "highlights");
+    await page.locator('#sight-sort').selectOption('distance');
+    await page.locator('#places-grid .art-card').waitFor();
+    assert.equal(placeSorts.at(-1), 'distance');
+    assert.match(await page.locator('#places-context').textContent(), /Nearest first/);
     await page.locator('[data-category="leisure.park"]').click();
     await page.waitForFunction(() =>
       document.querySelector("#places-grid .art-card"),
     );
     assert.ok(placeQueries.includes("leisure.park"));
+    assert.equal(await page.locator('#sight-sort-field').isVisible(), false);
     assert.equal(detailRequests, 1, "Category changes reuse cached details");
     await page.locator('#places-grid [data-action="save"]').click();
     await page.locator('[data-nav="saved"]').click();
@@ -234,15 +259,18 @@ const fs = require("node:fs");
     assert.equal(
       await page
         .locator(
-          'dialog a[href*="creativecommons.org"], dialog a[href*="commons.wikimedia.org"], dialog a[href*="wikipedia.org"]',
+          'dialog a[href*="creativecommons.org"]:visible, dialog a[href*="commons.wikimedia.org"]:visible, dialog a[href*="wikipedia.org"]:visible',
         )
         .count(),
       0,
     );
     assert.doesNotMatch(
-      await page.locator("dialog").textContent(),
+      await page.locator("dialog").innerText(),
       /Photo found by name|source and licence|contributors · source/,
     );
+    await page.locator('.detail-sources summary').click();
+    assert.ok(await page.locator('dialog a[href*="creativecommons.org"]').isVisible());
+    await page.locator('.detail-sources summary').click();
     await page.locator('dialog [data-action="add-place"]').click();
     await page.locator('[data-action="create-with-place"]').click();
     await page.locator('[name="name"]').fill("Weekend in Lviv");
@@ -326,17 +354,111 @@ const fs = require("node:fs");
       if (width === 390)
         await page.screenshot({
           path: path.join(output, "mobile.png"),
+          style: screenshotStyle,
           fullPage: true,
         });
       if (width === 1440)
         await page.screenshot({
           path: path.join(output, "desktop.png"),
+          style: screenshotStyle,
           fullPage: true,
         });
     }
+    // Mixed photo coverage: missing, failed image, failed provider and real photo.
+    const examples = [
+      ["Old Town Monument", "tourism.sights", ""],
+      ["City History Museum", "entertainment.museum", "https://upload.wikimedia.org/broken-card.png"],
+      ["Botanical Garden", "leisure.park", ""],
+      ["Corner Coffee", "catering.cafe", ""],
+      ["The Old Courtyard Restaurant", "catering.restaurant", ""],
+      ["Historic City Theatre", "tourism.sights", "https://upload.wikimedia.org/layout-test.jpg"],
+    ].map(([name, category, image_url], index) => ({
+      ...city, place_id: `layout-${index}`, name, categories: [category],
+      latitude: city.latitude + index / 100, address: `${index + 1} Market Square, Lviv, Ukraine`, image_url,
+    }));
+    await page.route("https://upload.wikimedia.org/broken-card.png", (route) => route.abort());
+    await page.route("https://upload.wikimedia.org/layout-test.jpg", (route) => route.fulfill({
+      contentType: "image/jpeg", body: fs.readFileSync(path.resolve(__dirname, "../../static/travel/images/chicago.jpg")),
+    }));
+    let layoutDetails = 0;
+    await page.route("**/api/places/**", (route) => {
+      const url = new URL(route.request().url());
+      const item = examples.find((p) => url.pathname === `/api/places/${p.place_id}/`);
+      if (item) layoutDetails++;
+      return route.fulfill({
+        status: item?.place_id === "layout-3" ? 503 : 200,
+        contentType: "application/json",
+        body: JSON.stringify(item?.place_id === "layout-3" ? { code: "provider_unavailable" } : item || { results: examples.map((p) => ({ ...p, image_url: "" })), has_more: false }),
+      });
+    });
+    await page.locator('[data-category="tourism.sights"]').click();
+    await page.locator('[data-place-id="layout-5"]').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => {
+      const image = document.querySelector('[data-place-id="layout-5"] img');
+      return image?.complete && image.naturalWidth > 0;
+    });
+    assert.equal(layoutDetails, 6);
+    assert.equal(await page.locator("#places-grid .place-illustration").count(), 5);
+    assert.equal(await page.locator("#places-grid img").count(), 1);
+    assert.doesNotMatch(await page.locator("#places-grid").textContent(), /No photo|Finding a photo|Photo temporarily unavailable/);
+    assert.ok((await page.locator('[data-place-id="layout-0"]').boundingBox()).height < 260);
+    await page.locator('[data-place-id="layout-0"] [data-action="save"]').click();
+    await page.locator('[data-nav="saved"]').click();
+    assert.equal(await page.locator('#saved-grid [data-place-id="layout-0"] .place-illustration').count(), 1);
+    await page.locator('[data-nav="discover"]').click();
+    for (const width of [320, 390, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Mixed cards overflow at ${width}`);
+      if (width === 390 || width === 1440) {
+        await page.locator("#places-grid").screenshot({
+          path: path.join(output, `place-cards-${width}.png`), style: screenshotStyle,
+        });
+      }
+    }
+    await page.locator("#destination-form").screenshot({ path: path.join(output, "country-flags.png") });
+    // Descriptions remain optional; a missing image never occupies half the dialog.
+    await page.locator('#places-grid [data-place-id="layout-0"] .title-button').click();
+    await page.locator('dialog .art-detail.text-only').waitFor();
+    assert.equal(await page.locator('dialog .location-art, dialog img').count(), 0);
+    assert.equal(await page.locator('dialog .place-story').count(), 0);
+    assert.doesNotMatch(await page.locator('dialog').innerText(), /No English description|temporarily unavailable|Discover this place in person/);
+    await page.locator('dialog').screenshot({ path: path.join(output, 'place-detail-no-description.png') });
+    await page.locator('#close-modal').click();
+
+    // Failed descriptions can be retried even after the detail was cached.
+    let storyRequests = 0;
+    await page.route('**/api/places/layout-3/', (route) => {
+      storyRequests++;
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        ...examples[3], description: storyRequests === 1 ? '' : '<script>unsafe()</script> A neighbourhood café. ' + 'A verified description of this place. '.repeat(20),
+        wikipedia_status: storyRequests === 1 ? 'unavailable' : 'found',
+      }) });
+    });
+    await page.locator('#places-grid [data-place-id="layout-3"] .title-button').click();
+    await page.locator('[data-action="retry-description"]').waitFor();
+    assert.doesNotMatch(await page.locator('dialog').innerText(), /Wikipedia is temporarily unavailable/);
+    await page.locator('[data-action="retry-description"]').click();
+    await page.locator('dialog .place-story').waitFor();
+    assert.equal(storyRequests, 2);
+    assert.equal(await page.locator('dialog .place-story script').count(), 0);
+    assert.match(await page.locator('dialog .place-story').textContent(), /neighbourhood café/);
+    assert.equal(await page.locator('dialog .story-more').getAttribute('open'), null);
+    await page.locator('dialog .story-more summary').click();
+    assert.ok(await page.locator('dialog .story-more p').isVisible());
+    await page.locator('#close-modal').click();
+
+    // A cached URL can still fail when the detail dialog tries to load it.
+    await page.locator('#places-grid [data-place-id="layout-1"] .title-button').click();
+    await page.locator('dialog .art-detail.text-only').waitFor();
+    assert.equal(await page.locator('dialog img').count(), 0);
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await page.locator('dialog').evaluate((el) => el.scrollWidth <= el.clientWidth), `Detail overflow at ${width}`);
+    }
+    await page.locator('#close-modal').click();
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: automatic photos, image source labels, OpenStreetMap, countries, cities, category search, Wikipedia, bookmarks, guest CRUD, notes, visited protection, JWT refresh, server integration, retry states, keyboard and responsive layout.",
+      "PASS: automatic photos, missing/broken photo cards, country flags and keyboard selection, OpenStreetMap, cities, category search, Wikipedia, bookmarks, guest CRUD, notes, visited protection, JWT refresh, server integration, retry states and responsive layout.",
     );
   } finally {
     await browser.close();

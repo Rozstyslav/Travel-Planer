@@ -1,4 +1,5 @@
 from unittest.mock import Mock, patch
+from copy import deepcopy
 import requests
 from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
@@ -71,6 +72,82 @@ class ClientTests(SimpleTestCase):
         self.assertEqual(query['apiKey'], 'test-secret')
         self.assertEqual(query['lang'], 'en')
         self.assertEqual(query['conditions'], 'named')
+        self.assertEqual(query['categories'], GeoapifyClient.SIGHT_CATEGORIES)
+        for category in ('tourism.sights', 'tourism.attraction', 'entertainment.culture',
+                         'entertainment.museum', 'heritage', 'building.historic'):
+            self.assertIn(category, query['categories'].split(','))
+
+    def test_highlights_include_distant_landmark_deduplicate_and_page_stably(self):
+        def feature(place_id, latitude, name, raw=None):
+            item = geo_feature(place_id)
+            p = item['properties']
+            p.update(name=name, lat=latitude, lon=2.35)
+            p['datasource']['raw'] = {'osm_id': place_id, 'osm_type': 'n', **(raw or {})}
+            return item
+
+        plaque = feature('plaque', 48.8501, 'Nearby plaque')
+        tower = feature('tower', 48.885, 'Tower', {'importance': 'international', 'landmark': 'yes',
+                                                'name:en': 'Tower', 'wikidata': 'Q123'})
+        outside = feature('outside', 49.1, 'Outside radius', {'importance': 'international'})
+        unknown = feature('unnamed', 48.85, None)
+        duplicate = deepcopy(tower)
+        duplicate['properties']['place_id'] = 'tower-alias'
+
+        def fetch(url, params):
+            self.assertEqual(params['filter'], 'circle:2.35,48.85,5000')
+            if params['categories'] == GeoapifyClient.TOURISM_CATEGORIES:
+                self.assertIn('bias', params)
+                return [plaque, duplicate, unknown]
+            self.assertNotIn('bias', params)
+            return [tower, outside]
+
+        with patch.object(GeoapifyClient, '_get', side_effect=fetch) as provider:
+            client = GeoapifyClient()
+            params = dict(latitude=48.85, longitude=2.35, categories='tourism.sights', sort='highlights', limit=1)
+            first = client.search_places(**params)
+            second = client.search_places(**params, offset=1)
+            self.assertEqual(first[0]['name'], 'Tower', 'Distance must not hide an important landmark')
+            self.assertEqual(second[0]['name'], 'Nearby plaque')
+            self.assertEqual(client.search_places(**params, offset=2), [])
+            self.assertEqual(provider.call_count, 5, 'Pagination reuses the ranked candidate set')
+
+    def test_highlights_find_cultural_and_historic_places_outside_full_tourism_feed(self):
+        def feature(place_id, name, categories, raw=None):
+            item = geo_feature(place_id)
+            item['properties'].update(name=name, categories=categories)
+            item['properties']['datasource']['raw'] = {
+                'osm_id': place_id, 'osm_type': 'w', **(raw or {})}
+            return item
+
+        # A full feed of nearby plaques previously excluded every other family.
+        plaques = [feature(f'plaque-{i}', f'Plaque {i}', ['tourism.sights']) for i in range(200)]
+        theatre = feature('theatre', 'Opera and Ballet Theatre', ['entertainment.culture.theatre'],
+                          {'wikipedia': 'uk:Opera', 'wikidata': 'Q123', 'name:en': 'Opera and Ballet Theatre'})
+        arts_centre = feature('arts-centre', 'Opera House', ['entertainment.culture.arts_centre', 'heritage.unesco'],
+                              {'landmark': 1, 'wikidata': 'Q456'})
+        museum = feature('museum', 'City Museum', ['entertainment.museum'], {'wikipedia': 'en:City Museum'})
+        historic = feature('historic', 'Historic Hall', ['building.historic'], {'wikidata': 'Q789'})
+
+        def fetch(url, params):
+            return {
+                GeoapifyClient.TOURISM_CATEGORIES: plaques,
+                GeoapifyClient.LANDMARK_CATEGORIES: [],
+                'entertainment.culture': [theatre, arts_centre],
+                'entertainment.museum': [museum],
+                'heritage,building.historic': [arts_centre, historic],
+            }[params['categories']]
+
+        with patch.object(GeoapifyClient, '_get', side_effect=fetch):
+            rows = GeoapifyClient().search_places(latitude=49.8419, longitude=24.0316,
+                categories='tourism.sights', sort='highlights')
+        self.assertEqual([p['place_id'] for p in rows[:4]], ['arts-centre', 'theatre', 'museum', 'historic'])
+        self.assertEqual(len({p['place_id'] for p in rows}), len(rows))
+
+    def test_highlights_do_not_change_restaurant_search(self):
+        self.response.json.return_value = {'features': [geo_feature()]}
+        GeoapifyClient().search_places(latitude=49, longitude=24, categories='catering.restaurant', sort='highlights')
+        self.assertEqual(self.http.call_args.kwargs['params']['categories'], 'catering.restaurant')
+        self.assertIn('bias', self.http.call_args.kwargs['params'])
 
     def test_unnamed_park_is_not_named_after_the_city(self):
         feature = geo_feature()
@@ -113,7 +190,8 @@ class ClientTests(SimpleTestCase):
             GeoapifyClient().get_place('invalid')
 
     def test_malformed_wikipedia_nested_objects(self):
-        for payload in ({'query': None}, {'query': {'pages': [{'thumbnail': None}]}}):
+        for payload in ({'query': None}, {'query': {'pages': [{'thumbnail': None}]}},
+                        {'query': {'pages': [{'extract': None}]}}):
             with self.subTest(payload=payload), self.assertRaises(ProviderUnavailableError):
                 self.response.json.return_value = payload
                 WikipediaClient().summary(title='Lviv')
@@ -170,6 +248,64 @@ class ClientTests(SimpleTestCase):
         self.assertTrue(result['image_url'].startswith('https://upload.wikimedia.org/'))
         self.assertEqual(self.http.call_args.kwargs['params']['explaintext'], 1)
         self.assertEqual(self.http.call_args.args[1], 'https://en.wikipedia.org/w/api.php')
+
+    def test_foreign_place_resolves_linked_english_article(self):
+        self.response.json.side_effect = [
+            {'entities': {'Q973118': {'sitelinks': {'enwiki': {'title': 'Coronation of Napoleon'}},
+                                     'descriptions': {'en': {'value': 'French royal event'}}}}},
+            {'query': {'pages': [{'title': 'Coronation of Napoleon', 'extract': 'The coronation took place in Paris.',
+                                 'fullurl': 'https://en.wikipedia.org/wiki/Coronation_of_Napoleon'}]}},
+        ]
+        result = WikipediaClient().place_summary(subject='Site of the Coronation of Napoleon',
+            wikidata_id='Q973118', wikipedia_link='fr:Sacre de Napoléon Ier')
+        self.assertEqual(result['description'], 'The coronation took place in Paris.')
+        self.assertEqual(result['match'], 'linked')
+        self.assertEqual(result['description_source'], 'Wikipedia')
+        self.assertEqual(self.http.call_args.kwargs['params']['titles'], 'Coronation of Napoleon')
+
+    def test_park_without_english_article_uses_verified_short_description(self):
+        self.response.json.return_value = {'entities': {'Q3494657': {
+            'descriptions': {'en': {'value': 'urban park in Paris, France'}}, 'sitelinks': {}}}}
+        result = WikipediaClient().place_summary(subject='Square Jean XXIII', wikidata_id='Q3494657')
+        self.assertEqual(result['description'], 'urban park in Paris, France')
+        self.assertEqual(result['description_source'], 'Wikidata')
+        self.assertEqual(result['description_url'], 'https://www.wikidata.org/wiki/Q3494657')
+        self.assertEqual(result['url'], '')
+        self.assertEqual(self.http.call_count, 1, 'Do not replace the linked park with an unrelated search result')
+
+    def test_foreign_article_without_wikidata_id_follows_english_language_link(self):
+        self.response.json.side_effect = [
+            {'query': {'pages': [{'title': 'Lieu', 'extract': 'Texte français.',
+                                 'fullurl': 'https://fr.wikipedia.org/wiki/Lieu',
+                                 'langlinks': [{'lang': 'en', 'title': 'Place'}]}]}},
+            {'query': {'pages': [{'title': 'Place', 'extract': 'English description.',
+                                 'fullurl': 'https://en.wikipedia.org/wiki/Place'}]}},
+        ]
+        result = WikipediaClient().place_summary(wikipedia_link='fr:Lieu')
+        self.assertEqual(result['description'], 'English description.')
+        self.assertEqual(self.http.call_args_list[0].kwargs['params']['lllang'], 'en')
+
+    @patch.object(WikipediaClient, 'summary', side_effect=ProviderUnavailableError('Wikipedia'))
+    def test_wikipedia_outage_keeps_wikidata_description(self, summary):
+        self.response.json.return_value = {'entities': {'Q123': {
+            'sitelinks': {'enwiki': {'title': 'Park'}}, 'descriptions': {'en': {'value': 'park in Paris'}}}}}
+        result = WikipediaClient().place_summary(wikidata_id='Q123')
+        self.assertEqual(result['description'], 'park in Paris')
+        self.assertEqual(result['description_source'], 'Wikidata')
+        result = WikipediaClient().place_summary(title='Park', wikidata_id='Q123')
+        self.assertEqual(result['description'], 'park in Paris')
+
+    def test_wikidata_article_validation_and_cache(self):
+        client = WikipediaClient()
+        self.assertEqual(client.wikidata_article('https://evil.test'), {})
+        self.http.assert_not_called()
+        self.response.json.return_value = {'entities': {'Q123': {'descriptions': {}, 'sitelinks': {}}}}
+        client.wikidata_article('Q123')
+        client.wikidata_article('Q123')
+        self.assertEqual(self.http.call_count, 1)
+        self.response.json.return_value = {'entities': None}
+        with self.assertRaises(ProviderUnavailableError):
+            client.wikidata_article('Q456')
 
     def test_wikipedia_search_label(self):
         self.response.json.return_value = {'query': {'pages': [{'title': 'Львів', 'fullurl': 'https://en.wikipedia.org/wiki/Lviv'}]}}

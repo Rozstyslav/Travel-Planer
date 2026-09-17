@@ -74,10 +74,15 @@ class CitySearchView(DiscoveryView):
 class PlaceSearchView(DiscoveryView):
     def get(self, request):
         data = self.query(PlacesSearchSerializer)
-        results = GeoapifyClient().search_places(**data)
+        highlights = data['categories'] == 'tourism.sights' and data['sort'] == 'highlights'
+        results = GeoapifyClient().search_places(**{**data, 'limit': data['limit'] + int(highlights)})
+        has_more = len(results) > data['limit'] if highlights else len(results) == data['limit']
+        if highlights:
+            results = results[:data['limit']]
         return Response({'results': unique_places([p for p in results if p.get('has_name', True)]),
                          'offset': data['offset'], 'limit': data['limit'],
-                         'has_more': len(results) == data['limit'], 'source': 'Geoapify / OpenStreetMap'})
+                         'has_more': has_more and data['offset'] + data['limit'] <= PlacesSearchSerializer.offset_limit(data),
+                         'sort': data['sort'], 'source': 'Geoapify / OpenStreetMap'})
 
 
 class PlaceDetailView(DiscoveryView):

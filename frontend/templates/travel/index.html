@@ -8,8 +8,8 @@
   <meta name="description" content="Travel Planner — choose a country, discover cities and places, and plan your next trip.">
   <title>Travel Planner — travel with curiosity</title>
   <link rel="icon" href="{% static 'travel/favicon.svg' %}" type="image/svg+xml">
-  <link rel="stylesheet" href="{% static 'travel/app.css' %}">
-  <script src="{% static 'travel/app.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static 'travel/app.css' %}?v={{ frontend_version }}">
+  <script src="{% static 'travel/app.js' %}?v={{ frontend_version }}" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -45,11 +45,11 @@
 
         <section class="collection section-space" id="collection" aria-labelledby="collection-heading">
           <div class="section-heading"><div><p class="eyebrow">01 / COUNTRIES & PLACES</p><h2 id="collection-heading">Find your <em>next somewhere.</em></h2></div><p class="section-intro">Pick a country. Find a city.<br>Sights, parks, and your next favourite coffee await.</p></div>
-          <form id="destination-form" class="destination-form"><label class="form-field">Country<select id="country-select" name="country" aria-describedby="country-info"><option value="">Loading countries…</option></select></label><label class="form-field">City<input id="city-query" name="q" type="search" required minlength="2" maxlength="150" placeholder="For example, Rome" autocomplete="off"></label><button type="submit" class="button button-dark">Find a city ↗</button></form>
+          <form id="destination-form" class="destination-form"><label class="form-field">Country<select id="country-select" name="country" aria-describedby="country-info"><option value="">Loading countries…</option></select></label><label class="form-field">City<input id="city-query" name="q" type="search" required minlength="2" maxlength="150" placeholder="For example, Lviv" autocomplete="off"></label><button type="submit" class="button button-dark">Find a city ↗</button></form>
           <div id="country-info" class="country-info" aria-live="polite"></div>
           <div id="city-results" class="city-results" aria-live="polite"></div>
           <div id="city-story" class="city-story" hidden></div>
-          <div class="collection-toolbar"><div class="filter-group" role="group" aria-label="Place category"><button class="filter active" data-category="tourism.sights" aria-pressed="true">Sights</button><button class="filter" data-category="entertainment.museum" aria-pressed="false">Museums</button><button class="filter" data-category="leisure.park" aria-pressed="false">Parks</button><button class="filter" data-category="catering.cafe" aria-pressed="false">Cafés</button><button class="filter" data-category="catering.restaurant" aria-pressed="false">Restaurants</button></div><label class="radius-field">Radius<select id="search-radius"><option value="2000">2 km</option><option value="5000" selected>5 km</option><option value="10000">10 km</option></select></label></div>
+          <div class="collection-toolbar"><div class="filter-group" role="group" aria-label="Place category"><button class="filter active" data-category="tourism.sights" aria-pressed="true">Sights</button><button class="filter" data-category="entertainment.museum" aria-pressed="false">Museums</button><button class="filter" data-category="leisure.park" aria-pressed="false">Parks</button><button class="filter" data-category="catering.cafe" aria-pressed="false">Cafés</button><button class="filter" data-category="catering.restaurant" aria-pressed="false">Restaurants</button></div><div class="discovery-options"><label id="sight-sort-field" class="radius-field">Show<select id="sight-sort"><option value="highlights">Highlights</option><option value="distance">Nearest first</option></select></label><label class="radius-field">Radius<select id="search-radius"><option value="2000">2 km</option><option value="5000" selected>5 km</option><option value="10000">10 km</option></select></label></div></div>
           <p id="places-context" class="muted"></p>
           <div id="places-grid" class="art-grid" aria-live="polite"></div>
           <div class="form-actions"><button id="load-more" class="button button-outline" hidden>More places ↓</button></div>

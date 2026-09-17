@@ -16,20 +16,23 @@ def get_place_details(place_id):
     if not place.get('has_name', True):
         place.update(wikipedia_match='none', wikipedia_status='not_found', image_match='none', image_source_url='')
         return place
+    wiki = {}
     try:
-        wiki = WikipediaClient().summary(
+        wiki = WikipediaClient().place_summary(
             title=place.get('wikipedia_title', ''),
             query=' '.join(dict.fromkeys(filter(None, [place['name'], place['city']]))),
             subject=place['name'],
+            wikipedia_link=place.get('wikipedia_link', ''), wikidata_id=place.get('wikidata_id', ''),
         )
         place.update(description=wiki['description'], image_url=wiki['image_url'],
-                     wikipedia_url=wiki['url'], wikipedia_title=wiki['title'], wikipedia_match=wiki['match'])
+                     wikipedia_url=wiki['url'], wikipedia_title=wiki['title'], wikipedia_match=wiki['match'],
+                     description_source=wiki.get('description_source', ''), description_url=wiki.get('description_url', ''))
         place['wikipedia_status'] = 'found' if wiki['found'] else 'not_found'
     except ProviderError:
         # Descriptive content is optional; a valid geographic place can still
         # be added when Wikipedia is down. The API reports that partial result.
         place.update(wikipedia_match='none', wikipedia_status='unavailable')
-    place['image_source_url'] = place['wikipedia_url'] if place['image_url'] else ''
+    place['image_source_url'] = (wiki.get('image_source_url') or place['wikipedia_url']) if place['image_url'] else ''
     place['image_match'] = place['wikipedia_match'] if place['image_url'] else 'none'
     if not place['image_url']:
         try:

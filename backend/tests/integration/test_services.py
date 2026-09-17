@@ -31,7 +31,7 @@ class TravelServiceTests(TestCase):
             create_project_with_places(project_data={'name': 'Trip'}, places_data=[{'place_id': 'geo-1'}, {'place_id': 'geo-2'}])
         self.assertEqual(TravelProject.objects.count(), 0)
 
-    @patch('travel.services.WikipediaClient.summary', side_effect=ProviderUnavailableError('Wikipedia'))
+    @patch('travel.services.WikipediaClient.place_summary', side_effect=ProviderUnavailableError('Wikipedia'))
     @patch('travel.services.GeoapifyClient.get_place', return_value=geo_place())
     def test_wikipedia_outage_does_not_discard_place(self, geo, wiki):
         result = get_place_details('geo-1')
@@ -69,7 +69,7 @@ class TravelServiceTests(TestCase):
     @patch('travel.services.WikipediaClient.linked_image', return_value={
         'image_url': 'https://upload.wikimedia.org/statue.jpg',
         'image_source_url': 'https://commons.wikimedia.org/wiki/File:Statue.jpg'})
-    @patch('travel.services.WikipediaClient.summary', side_effect=ProviderUnavailableError('Wikipedia'))
+    @patch('travel.services.WikipediaClient.place_summary', side_effect=ProviderUnavailableError('Wikipedia'))
     @patch('travel.services.GeoapifyClient.get_place')
     def test_photo_fallback_survives_uk_wikipedia_outage_and_is_saved(self, geo, wiki, image):
         geo.return_value = {**geo_place(), 'wikidata_id': 'Q123', 'wikipedia_link': ''}
@@ -82,7 +82,7 @@ class TravelServiceTests(TestCase):
     @patch('travel.services.WikipediaClient.search_image', return_value={
         'image_url': 'https://thumb.wikimedia.org/statue.jpg',
         'image_source_url': 'https://commons.wikimedia.org/wiki/File:Statue.jpg'})
-    @patch('travel.services.WikipediaClient.summary', side_effect=ProviderUnavailableError('Wikipedia'))
+    @patch('travel.services.WikipediaClient.place_summary', side_effect=ProviderUnavailableError('Wikipedia'))
     @patch('travel.services.GeoapifyClient.get_place')
     def test_commons_suggestion_is_labelled_and_persisted(self, geo, wiki, image):
         geo.return_value = {**geo_place(), 'image_search_name': 'Mikhail Damiralis'}

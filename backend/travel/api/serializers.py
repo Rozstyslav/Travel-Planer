@@ -1,6 +1,7 @@
 import math
 from rest_framework import serializers
 
+from travel.clients.geoapify import GeoapifyClient
 from travel.models import ProjectPlace, TravelProject
 from travel.services import MAX_PLACES_PER_PROJECT, create_project_with_places, update_project_place
 
@@ -123,11 +124,20 @@ class PlacesSearchSerializer(serializers.Serializer):
     ], default='tourism.sights')
     radius = serializers.IntegerField(min_value=100, max_value=50000, default=5000)
     limit = serializers.IntegerField(min_value=1, max_value=20, default=12)
-    offset = serializers.IntegerField(min_value=0, max_value=500, default=0)
+    offset = serializers.IntegerField(min_value=0, max_value=GeoapifyClient.HIGHLIGHT_MAX_RESULTS, default=0)
+    sort = serializers.ChoiceField(choices=['distance', 'highlights'], default='distance')
+
+    @staticmethod
+    def offset_limit(attrs):
+        if attrs['categories'] == 'tourism.sights' and attrs['sort'] == 'highlights':
+            return GeoapifyClient.HIGHLIGHT_MAX_RESULTS
+        return 500
 
     def validate(self, attrs):
         if not all(math.isfinite(attrs[k]) for k in ('latitude', 'longitude')):
             raise serializers.ValidationError('Coordinates must be finite.')
+        if attrs['offset'] > self.offset_limit(attrs):
+            raise serializers.ValidationError({'offset': 'Offset must not exceed 500 for nearest searches.'})
         return attrs
 
 

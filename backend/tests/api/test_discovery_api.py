@@ -38,6 +38,35 @@ class DiscoveryApiTests(APITestCase):
         self.assertFalse(response.data['has_more'])
 
     @patch('travel.api.views.GeoapifyClient.search_places')
+    def test_highlights_pagination_uses_lookahead(self, client):
+        client.return_value = [geo_place('one', 'osm:n:1'), {**geo_place('two', 'osm:n:2'), 'name': 'Other'}]
+        response = self.client.get('/api/places/', {'latitude': 49, 'longitude': 24, 'sort': 'highlights', 'limit': 1})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertTrue(response.data['has_more'])
+        self.assertEqual(client.call_args.kwargs['limit'], 2)
+        client.return_value = [geo_place()]
+        response = self.client.get('/api/places/', {'latitude': 49, 'longitude': 24, 'sort': 'highlights', 'limit': 1})
+        self.assertFalse(response.data['has_more'])
+
+    def test_invalid_sort_is_rejected(self):
+        self.assertEqual(self.client.get('/api/places/', {'latitude': 49, 'longitude': 24, 'sort': 'random'}).status_code, 400)
+
+    @patch('travel.api.views.GeoapifyClient.search_places')
+    def test_highlights_can_page_past_500_without_extending_nearest_search(self, client):
+        client.return_value = [geo_place('one', 'osm:n:1'), {**geo_place('two', 'osm:n:2'), 'name': 'Other'}]
+        params = {'latitude': 49, 'longitude': 24, 'sort': 'highlights', 'limit': 1, 'offset': 500}
+        response = self.client.get('/api/places/', params)
+        self.assertTrue(response.data['has_more'])
+        response = self.client.get('/api/places/', {**params, 'offset': 501})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(client.call_args.kwargs['offset'], 501)
+        self.assertEqual(self.client.get('/api/places/', {**params, 'offset': 1001}).status_code, 400)
+        for override in ({'sort': 'distance'}, {'categories': 'entertainment.museum'}):
+            response = self.client.get('/api/places/', {**params, 'offset': 501, **override})
+            self.assertEqual(response.status_code, 400)
+
+    @patch('travel.api.views.GeoapifyClient.search_places')
     def test_deduplication_does_not_end_pagination_early(self, client):
         client.return_value = [geo_place('a'), geo_place('b')]
         response = self.client.get('/api/places/', {'latitude': 49, 'longitude': 24, 'limit': 2})

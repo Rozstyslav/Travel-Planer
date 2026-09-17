@@ -83,10 +83,10 @@
     state.places.find((p) => p.place_id === id);
   const placeImage = (p) =>
     safeURL(p?.image_url) || `${ASSETS}image-placeholder.svg`;
-  const mapsLink = (p) => {
+  const mapsLink = (p, label = "") => {
     if (!Number.isFinite(p.latitude) || !Number.isFinite(p.longitude))
       return "";
-    return `<a class="text-link coordinates-link" href="https://www.openstreetmap.org/?mlat=${p.latitude}&amp;mlon=${p.longitude}#map=17/${p.latitude}/${p.longitude}" target="_blank" rel="noopener noreferrer" aria-label="Open ${escapeHTML(p.name)} in OpenStreetMap">${p.latitude.toFixed(4)}°, ${p.longitude.toFixed(4)}° · OpenStreetMap ↗</a>`;
+    return `<a class="text-link coordinates-link" href="https://www.openstreetmap.org/?mlat=${p.latitude}&amp;mlon=${p.longitude}#map=17/${p.latitude}/${p.longitude}" target="_blank" rel="noopener noreferrer" aria-label="Open ${escapeHTML(p.name)} in OpenStreetMap">${label || `${p.latitude.toFixed(4)}°, ${p.longitude.toFixed(4)}° · OpenStreetMap ↗`}</a>`;
   };
   function samePlace(a, b) {
     if (
@@ -164,12 +164,6 @@
     return `${p.image_match === "search" ? "Photo found by name · check the match.<br>" : ""}<a class="text-link" href="${escapeHTML(source)}" target="_blank" rel="noopener noreferrer">Wikimedia photo · source and licence ↗</a>`;
   }
 
-  function photoPlaceholder(p) {
-    return state.details.has(p.place_id)
-      ? "No photo available for this place"
-      : "Finding a photo…";
-  }
-
   function loadCardPhotos() {
     while (activePhotos < 2 && photoQueue.length) {
       const element = photoQueue.shift();
@@ -187,15 +181,10 @@
           if (image) {
             button.innerHTML = `<img src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}" loading="lazy">`;
             $(".card-image-credit", element).innerHTML = photoCredit(p);
-          } else {
-            $(".location-art small", element).textContent =
-              "No photo available for this place";
           }
         })
-        .catch(() => {
-          const caption = $(".location-art small", element);
-          if (caption) caption.textContent = "Photo temporarily unavailable";
-        })
+        // The category illustration stays useful even if photo lookup fails.
+        .catch(() => {})
         .finally(() => {
           activePhotos--;
           loadCardPhotos();
@@ -215,6 +204,42 @@
     "catering.cafe": "Cafés",
     "catering.restaurant": "Restaurants",
   };
+  const placeKinds = [
+    {
+      prefix: "entertainment.museum", label: "Museum", tone: "clay",
+      path: '<path d="m3 9 9-5 9 5M4 10h16M6 10v8m6-8v8m6-8v8M3 20h18"/>',
+    },
+    {
+      prefix: "leisure.park", label: "Park", tone: "sage",
+      path: '<path d="M12 21v-5m0 0c-9 3-11-6-5-8-1-7 11-7 10 0 6 2 4 11-5 8Z"/>',
+    },
+    {
+      prefix: "catering.cafe", label: "Café", tone: "sand",
+      path: '<path d="M4 8h12v6a6 6 0 0 1-12 0V8Zm12 1h2a3 3 0 0 1 0 6h-2M3 22h15M7 3v2m5-2v2"/>',
+    },
+    {
+      prefix: "catering.restaurant", label: "Restaurant", tone: "sand",
+      path: '<path d="M5 3v6m3-6v6M2 3v6a3 3 0 0 0 6 0m-3 3v9M20 3c-4 2-5 7-5 10h5m0-10v18"/>',
+    },
+    {
+      prefix: "tourism", label: "Sight", tone: "blue",
+      path: '<path d="M4 21h16M6 21V10h12v11M9 10V6h6v4m-3-4V2M9 14h.01M15 14h.01M10 21v-4h4v4"/>',
+    },
+  ];
+  function placeKind(p) {
+    return (
+      placeKinds.find((kind) =>
+        (p.categories || []).some((category) => category.startsWith(kind.prefix)),
+      ) || {
+        label: "Place", tone: "sage",
+        path: '<path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/>',
+      }
+    );
+  }
+  function placeIllustration(p) {
+    const kind = placeKind(p);
+    return `<span class="place-illustration tone-${kind.tone}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${kind.path}</svg></span>`;
+  }
 
   function readStored(key, fallback, storage = "localStorage") {
     try {
@@ -695,7 +720,7 @@
       const c = await discovery(`countries/${encodeURIComponent(code)}/`);
       if (version !== state.countryVersion) return;
       $("#country-info").innerHTML =
-        `<strong>${escapeHTML(c.emoji)} ${escapeHTML(c.name)}</strong><span>Capital: ${escapeHTML(c.capital || "—")}</span><span>Currency: ${escapeHTML(c.currency || "—")}</span><span>Languages: ${escapeHTML((c.languages || []).map((l) => l.name).join(", ") || "—")}</span>`;
+        `<strong><span class="country-flag" aria-hidden="true">${escapeHTML(c.emoji)}</span> ${escapeHTML(c.name)}</strong><span>Capital: ${escapeHTML(c.capital || "—")}</span><span>Currency: ${escapeHTML(c.currency || "—")}</span><span>Languages: ${escapeHTML((c.languages || []).map((l) => l.name).join(", ") || "—")}</span>`;
     } catch (error) {
       if (version === state.countryVersion)
         displayError("#country-info", error, "retry-country");
@@ -796,13 +821,14 @@
     if (!state.city) return;
     const version = ++state.searchVersion;
     const offset = more ? state.offset + 12 : 0;
+    const sort = state.category === "tourism.sights" ? $("#sight-sort").value : "distance";
     if (!more) {
       state.places = [];
       $("#places-grid").innerHTML = loading("Finding places for your trip…");
     }
     $("#load-more").disabled = true;
     $("#places-context").textContent =
-      `${state.city.name} · ${categories[state.category]} · ${Number($("#search-radius").value) / 1000} km`;
+      `${state.city.name} · ${categories[state.category]} · ${Number($("#search-radius").value) / 1000} km${state.category === "tourism.sights" ? ` · ${sort === "highlights" ? "Highlights" : "Nearest first"}` : ""}`;
     try {
       const data = await discovery("places/", {
         latitude: state.city.latitude,
@@ -811,6 +837,7 @@
         radius: $("#search-radius").value,
         limit: 12,
         offset,
+        sort,
       });
       if (version !== state.searchVersion) return;
       state.places = uniquePlaces([
@@ -818,7 +845,7 @@
         ...data.results,
       ]);
       state.offset = offset;
-      state.hasMore = data.has_more && offset < 500;
+      state.hasMore = data.has_more;
       renderPlaces();
     } catch (error) {
       if (version === state.searchVersion) {
@@ -835,12 +862,19 @@
   function wikiAttribution(url) {
     const safe = safeURL(url);
     if (!safe) return "";
-    return `<p class="detail-caption"><a class="text-link" href="${escapeHTML(safe)}" target="_blank" rel="noopener noreferrer">Wikipedia contributors · source and images ↗</a><br>Text: <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Photo licence details are on its file page.</p>`;
+    return `<p class="detail-caption wiki-attribution"><a href="${escapeHTML(safe)}" target="_blank" rel="noopener noreferrer">Wikipedia contributors · source and images ↗</a><span>Text: <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></span><span class="photo-licence-note">Photo licence details are on its file page.</span></p>`;
   }
   function card(p) {
     const saved = state.saved.has(p.place_id);
     const image = safeURL(p.image_url);
-    return `<article class="art-card" data-place-id="${escapeHTML(p.place_id)}"><div class="art-image-wrap"><button class="art-image-button" data-action="place-detail" data-id="${escapeHTML(p.place_id)}" aria-label="More about: ${escapeHTML(p.name)}">${image ? `<img src="${escapeHTML(image)}" alt="${escapeHTML(p.wikipedia_title || p.name)}" loading="lazy">` : `<span class="location-art" aria-hidden="true"><span>⌖</span><small>${photoPlaceholder(p)}</small></span>`}</button><button class="save-button" data-action="save" data-id="${escapeHTML(p.place_id)}" aria-label="${saved ? "Remove from saved" : "Save"}: ${escapeHTML(p.name)}" aria-pressed="${saved}"><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M3 2h10v15l-5-3-5 3Z"/></svg></button><span class="art-type">${escapeHTML(p.city || p.country_code || "DISCOVER A PLACE")}</span></div><div class="art-card-meta"><div><h3><button class="title-button" data-action="place-detail" data-id="${escapeHTML(p.place_id)}">${escapeHTML(p.name)}</button></h3><p>${escapeHTML(p.address)}</p>${mapsLink(p)}</div><button class="art-add" data-action="add-place" data-id="${escapeHTML(p.place_id)}" aria-label="Add to trip: ${escapeHTML(p.name)}">+</button></div><p class="detail-caption card-image-credit">${photoCredit(p)}</p></article>`;
+    const kind = placeKind(p);
+    return `<article class="art-card" data-place-id="${escapeHTML(p.place_id)}">
+      <div class="art-image-wrap"><button class="art-image-button" data-action="place-detail" data-id="${escapeHTML(p.place_id)}" aria-label="More about: ${escapeHTML(p.name)}">${image ? `<img src="${escapeHTML(image)}" alt="${escapeHTML(p.wikipedia_title || p.name)}" loading="lazy">` : placeIllustration(p)}</button></div>
+      <div class="art-card-meta"><span class="place-category">${kind.label}</span><h3><button class="title-button" data-action="place-detail" data-id="${escapeHTML(p.place_id)}">${escapeHTML(p.name)}</button></h3><p class="place-address">${escapeHTML(p.address || p.city || p.country_code)}</p></div>
+      <button class="save-button" data-action="save" data-id="${escapeHTML(p.place_id)}" aria-label="${saved ? "Remove from saved" : "Save"}: ${escapeHTML(p.name)}" aria-pressed="${saved}"><svg viewBox="0 0 16 20" aria-hidden="true"><path d="M3 2h10v15l-5-3-5 3Z"/></svg></button>
+      <div class="place-card-footer">${mapsLink(p, "View on map ↗")}<button class="art-add" data-action="add-place" data-id="${escapeHTML(p.place_id)}" aria-label="Add to trip: ${escapeHTML(p.name)}">Add to trip <span aria-hidden="true">+</span></button></div>
+      <p class="detail-caption card-image-credit">${photoCredit(p)}</p>
+    </article>`;
   }
   function renderPlaces() {
     $$("#places-grid .art-card").forEach((element) =>
@@ -889,8 +923,8 @@
       ($("#saved-grid button") || $('[data-nav="saved"]')).focus();
     toast(state.saved.has(id) ? "Place saved." : "Removed from saved.");
   }
-  async function detailedPlace(id) {
-    if (state.details.has(id)) return state.details.get(id);
+  async function detailedPlace(id, refresh = false) {
+    if (!refresh && state.details.has(id)) return state.details.get(id);
     if (state.detailRequests.has(id)) return state.detailRequests.get(id);
     const request = fetchPlaceDetails(id).finally(() =>
       state.detailRequests.delete(id),
@@ -912,18 +946,60 @@
     }
     return p;
   }
-  async function showPlace(id) {
+  function placeStory(p) {
+    let description = typeof p.description === "string" ? p.description.trim() : "";
+    if (!description) return "";
+    if (p.description_source === "Wikidata") {
+      description = description.charAt(0).toUpperCase() + description.slice(1);
+      if (!/[.!?]$/.test(description)) description += ".";
+    }
+    const paragraphs = (text) => text.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${escapeHTML(paragraph)}</p>`).join("");
+    let content = paragraphs(description);
+    if (description.length > 500) {
+      const sentenceEnd = description.lastIndexOf(". ", 360);
+      const wordEnd = description.lastIndexOf(" ", 360);
+      const cut = sentenceEnd >= 120 ? sentenceEnd + 1 : wordEnd > 0 ? wordEnd : 360;
+      const preview = description.slice(0, cut).trim();
+      content = `${paragraphs(preview + (/[.!?]$/.test(preview) ? "" : "…"))}<details class="story-more"><summary>Read more</summary>${paragraphs(description.slice(cut).trim())}</details>`;
+    }
+    return `<section class="place-story"><h3>${p.wikipedia_match === "search" ? "Related reading" : "About this place"}</h3>${p.wikipedia_match === "search" && p.wikipedia_title ? `<p class="story-title">${escapeHTML(p.wikipedia_title)}</p>` : ""}${content}</section>`;
+  }
+  function detailSources(p) {
+    const descriptionURL = safeURL(p.description_url || p.wikipedia_url);
+    const descriptionSource = p.description_source || "Wikipedia";
+    const descriptionCredit = p.description && descriptionURL
+      ? `<a href="${escapeHTML(descriptionURL)}" target="_blank" rel="noopener noreferrer">${escapeHTML(descriptionSource)} ↗</a> · <a href="https://creativecommons.org/${descriptionSource === "Wikidata" ? "publicdomain/zero/1.0/" : "licenses/by-sa/4.0/"}" target="_blank" rel="noopener noreferrer">${descriptionSource === "Wikidata" ? "CC0" : "CC BY-SA 4.0"}</a>`
+      : "";
+    return `<details class="detail-sources"><summary>Sources & credits</summary>${descriptionCredit ? `<p>${descriptionCredit}</p>` : ""}${photoCredit(p) ? `<p>${photoCredit(p)}</p>` : ""}<p>Map data: Geoapify / © OpenStreetMap contributors.</p></details>`;
+  }
+  async function showPlace(id, refresh = false) {
     openModal(
       '<h2 id="modal-title">Getting to know this place…</h2>' +
         loading("Loading details and stories"),
     );
     const version = modalVersion;
     try {
-      const p = await detailedPlace(id);
+      const p = await detailedPlace(id, refresh || state.details.get(id)?.wikipedia_status === "unavailable");
       if (version !== modalVersion) return;
+      const image = safeURL(p.image_url);
+      const kind = placeKind(p);
+      const address = p.address?.startsWith(`${p.name}, `) ? p.address.slice(p.name.length + 2) : p.address;
       openModal(
-        `<div class="art-detail">${p.image_url ? `<img src="${escapeHTML(safeURL(p.image_url))}" alt="${escapeHTML(p.wikipedia_title)}">` : '<div class="location-art"><span aria-hidden="true">⌖</span><small>Discover this place in person</small></div>'}<div><p class="eyebrow">${escapeHTML(p.city)} · ${escapeHTML(p.country_code)}</p><h2 id="modal-title">${escapeHTML(p.name)}</h2><p class="modal-description">${escapeHTML(p.address)}</p>${p.wikipedia_match === "search" ? `<p class="form-help">Related Wikipedia search result: ${escapeHTML(p.wikipedia_title)}. Check that it matches this place.</p>` : ""}<p class="modal-description">${escapeHTML(p.description || (p.wikipedia_status === "unavailable" ? "Wikipedia is temporarily unavailable. You can still add this place to a trip." : "No English description is available for this place yet."))}</p><button class="button button-dark" data-action="add-place" data-id="${escapeHTML(id)}">Add to trip +</button>${mapsLink(p)}<p class="detail-caption">Map data: Geoapify / © OpenStreetMap contributors.</p></div></div>`,
-        true,
+        `<div class="art-detail${image ? "" : " text-only"}">
+          <div class="place-detail-overview">
+            ${image ? `<img class="detail-photo" src="${escapeHTML(image)}" alt="${escapeHTML(p.name)}">` : ""}
+            <div class="place-detail-content">
+              <div class="place-detail-heading">${!image ? `<div class="detail-symbol">${placeIllustration(p)}</div>` : ""}<p class="eyebrow">${escapeHTML([kind.label, p.city, p.country_code].filter(Boolean).join(" · "))}</p></div>
+              <h2 id="modal-title">${escapeHTML(p.name)}</h2>
+              ${address ? `<p class="detail-address">${escapeHTML(address)}</p>` : ""}
+            </div>
+          </div>
+          ${placeStory(p)}
+          ${!p.description && p.wikipedia_status === "unavailable" ? `<button class="story-retry title-button" data-action="retry-description" data-id="${escapeHTML(id)}">Load more about this place ↻</button>` : ""}
+          <div class="place-detail-actions"><button class="button button-dark" data-action="add-place" data-id="${escapeHTML(id)}">Add to trip <span aria-hidden="true">+</span></button>${mapsLink(p, "View on map ↗")}</div>
+          ${detailSources(p)}
+        </div>`,
+        Boolean(image),
       );
       if (state.places.length) renderPlaces();
     } catch (error) {
@@ -1051,6 +1127,9 @@
         case "save":
           toggleSave(id);
           break;
+        case "retry-description":
+          await showPlace(id, true);
+          break;
         case "create-trip":
           showProjectForm();
           break;
@@ -1144,10 +1223,12 @@
     loadCountry();
   });
   $("#search-radius").addEventListener("change", () => loadPlaces());
+  $("#sight-sort").addEventListener("change", () => loadPlaces());
   $("#load-more").addEventListener("click", () => loadPlaces(true));
   $$("[data-category]").forEach((button) =>
     button.addEventListener("click", () => {
       state.category = button.dataset.category;
+      $("#sight-sort-field").hidden = state.category !== "tourism.sights";
       $$("[data-category]").forEach((el) => {
         el.classList.toggle("active", el === button);
         el.setAttribute("aria-pressed", String(el === button));
@@ -1189,6 +1270,19 @@
     (e) => {
       const img = e.target;
       if (img.tagName === "IMG" && !img.dataset.fallback) {
+        if (img.classList.contains("detail-photo")) {
+          img.closest(".art-detail").classList.add("text-only");
+          modal.classList.remove("wide");
+          img.remove();
+          return;
+        }
+        const card = img.closest(".art-card");
+        if (card) {
+          const p = findPlace(card.dataset.placeId);
+          img.parentElement.innerHTML = placeIllustration(p || {});
+          $(".card-image-credit", card).textContent = "";
+          return;
+        }
         img.dataset.fallback = "true";
         img.src = `${ASSETS}image-placeholder.svg`;
       }
