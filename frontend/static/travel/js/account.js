@@ -2,7 +2,7 @@ import { renderTemplate } from "travel/ui/templates.js";
 import { $ } from "travel/core/dom.js";
 import { state } from "travel/core/state.js";
 import { persist } from "travel/core/storage.js";
-import { api, fetchJSON, errorMessage } from "travel/core/api.js";
+import { fetchJSON, logoutSession, clearSession } from "travel/core/api.js";
 import {
   openModal,
   closeModal,
@@ -10,11 +10,7 @@ import {
   modalVersion,
 } from "travel/ui/modal.js";
 import { toast } from "travel/ui/feedback.js";
-import {
-  loadProjects,
-  renderTrips,
-  cancelProjectLoad,
-} from "travel/pages/trips.js";
+import { loadProjects } from "travel/pages/trips.js";
 import { navigate } from "travel/router.js";
 import { registerActions } from "travel/core/actions.js";
 import { renderAccount } from "travel/ui/workspace.js";
@@ -23,17 +19,8 @@ export function showLogin() {
   openModal(renderTemplate("account-login"));
   const version = modalVersion;
   bindForm(async (formData) => {
-    const { response, data } = await fetchJSON("/api/auth/token/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(formData)),
-    });
-    if (!response.ok)
-      throw new Error(
-        response.status === 401
-          ? "Incorrect username or password."
-          : errorMessage(data, response.status),
-      );
+    const data = await authRequest("login/", Object.fromEntries(formData));
+    if (version !== modalVersion) return;
     state.tokens = data;
     state.loaded = false;
     persist("tp-session-v1", data, "sessionStorage");
@@ -48,24 +35,107 @@ export function showLogin() {
 export function showAccount() {
   if (!state.tokens) return showLogin();
   openModal(renderTemplate("account-details"));
+  const version = modalVersion;
   bindForm(async () => {
-    await api("auth/logout/", {
-      method: "POST",
-      body: JSON.stringify({ refresh: state.tokens.refresh }),
-    });
-    state.tokens = null;
-    state.remote = [];
-    state.loaded = false;
-    cancelProjectLoad();
-    persist("tp-session-v1", null, "sessionStorage");
-    renderTrips();
-    closeModal();
-    toast("You’re in the guest workspace.");
+    try {
+      await logoutSession();
+      toast("You’re in the guest workspace.");
+    } catch {
+      toast("Signed out on this device. The server could not be reached to revoke the session.");
+    } finally {
+      if (version === modalVersion) closeModal();
+    }
   });
+}
+
+async function authRequest(path, payload) {
+  const { response, data } = await fetchJSON(`/api/auth/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const message = data?.code === "email_delivery_failed"
+      ? "We couldn’t send the email. Please try again later."
+      : response.status === 429
+      ? "Too many attempts. Please wait and try again."
+      : response.status >= 500
+        ? "The service is temporarily unavailable. Please try again."
+        : Object.values(data || {}).flat().filter((value) => typeof value === "string").join(" ");
+    throw new Error(message || "Check your details and try again.");
+  }
+  return data;
+}
+
+function showEmailNotice(message) {
+  openModal(renderTemplate("account-notice", { title: "Check your email.", message }));
+}
+
+export function showRegister() {
+  openModal(renderTemplate("account-register"));
+  const version = modalVersion;
+  bindForm(async (form) => {
+    const result = await authRequest("register/", Object.fromEntries(form));
+    if (version === modalVersion) showEmailNotice(result.detail);
+  });
+}
+
+export function showEmailForm(resend = false) {
+  openModal(renderTemplate("account-email-form", {
+    title: resend ? "Confirm your email." : "Forgot your password?",
+    description: resend ? "Request a new verification link." : "We’ll email you a link to choose a new password.",
+  }));
+  const version = modalVersion;
+  bindForm(async (form) => {
+    const result = await authRequest(resend ? "resend-verification/" : "password-reset/", Object.fromEntries(form));
+    if (version === modalVersion) showEmailNotice(result.detail);
+  });
+}
+
+function handleAuthLink() {
+  const [action, query = ""] = location.hash.slice(1).split("?");
+  if (!["verify-email", "reset-password"].includes(action)) return;
+  const params = new URLSearchParams(query);
+  history.replaceState(null, "", `${location.pathname}${location.search}#discover`);
+  if (action === "reset-password") {
+    openModal(renderTemplate("account-reset-password"));
+    bindForm(async (form) => {
+      if (form.get("password") !== form.get("confirm_password"))
+        throw new Error("Passwords do not match.");
+      const version = modalVersion;
+      const result = await authRequest("password-reset/confirm/", {
+        uid: params.get("uid"), token: params.get("token"), password: form.get("password"),
+      });
+      clearSession();
+      if (version === modalVersion) {
+        showLogin();
+        toast(result.detail);
+      }
+    });
+  } else {
+    openModal(renderTemplate("account-notice", { title: "Verifying your email…", message: "Please wait." }));
+    const version = modalVersion;
+    authRequest("verify-email/", { token: params.get("token") })
+      .then((result) => {
+        if (version === modalVersion)
+          openModal(renderTemplate("account-notice", { title: "Email verified.", message: result.detail }));
+      })
+      .catch((error) => {
+        if (version === modalVersion)
+          openModal(renderTemplate("account-notice", { title: "Could not verify email.", message: error.message }));
+      });
+  }
 }
 
 export function initAccount() {
   $("#account-button").addEventListener("click", showAccount);
-  registerActions({ login: () => showLogin() });
+  registerActions({
+    login: () => showLogin(),
+    register: () => showRegister(),
+    "forgot-password": () => showEmailForm(),
+    "resend-verification": () => showEmailForm(true),
+  });
+  window.addEventListener("hashchange", handleAuthLink);
+  handleAuthLink();
   renderAccount();
 }

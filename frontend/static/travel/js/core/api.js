@@ -4,6 +4,29 @@ import { events } from "travel/core/events.js";
 
 let refreshPromise;
 
+export function clearSession() {
+  state.tokens = null;
+  state.remote = [];
+  state.loaded = false;
+  persist("tp-session-v1", null, "sessionStorage");
+  events.dispatchEvent(new Event("session-expired"));
+}
+
+export async function logoutSession() {
+  // If refresh is rotating a token, revoke the replacement rather than the old one.
+  if (refreshPromise) await refreshPromise.catch(() => {});
+  const refresh = state.tokens?.refresh;
+  clearSession();
+  if (!refresh) return;
+  const { response, data } = await fetchJSON("/api/auth/logout/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+  if (!response.ok && response.status !== 401)
+    throw new Error(errorMessage(data, response.status));
+}
+
 export function errorMessage(data, status) {
   if (status === 429) return "Too many requests. Wait a minute and try again.";
   if (data?.code === "provider_configuration")
@@ -50,6 +73,7 @@ export async function fetchJSON(url, options = {}) {
 }
 
 export async function refreshSession() {
+  if (!state.tokens) throw new Error("Please sign in to continue.");
   if (!refreshPromise) {
     const previous = state.tokens;
     refreshPromise = (async () => {
@@ -62,15 +86,12 @@ export async function refreshSession() {
         throw new Error("Your session has changed. Please try again.");
       if (!response.ok) {
         if (response.status === 401 || response.status === 400) {
-          state.tokens = null;
-          state.remote = [];
-          state.loaded = false;
-          persist("tp-session-v1", null, "sessionStorage");
-          events.dispatchEvent(new Event("session-expired"));
+          clearSession();
         }
         throw new Error(errorMessage(data, response.status));
       }
       state.tokens = {
+        ...previous,
         access: data.access,
         refresh: data.refresh || previous.refresh,
       };

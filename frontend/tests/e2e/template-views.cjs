@@ -65,7 +65,31 @@ const assert = require("node:assert/strict");
     await page.locator('dialog [data-action="edit-trip"]').waitFor();
     assert.equal(await page.locator('.trip-association').count(), 0);
     assert.equal(await page.locator('.trip-route-art').count(), 1);
-    await page.locator("#close-modal").click();
+    // Legacy visits must not lock a trip whose current stops are unvisited.
+    await page.evaluate(async () => {
+      const { state } = await import("travel/core/state.js");
+      const { showTrip } = await import("travel/pages/trips.js");
+      const trip = state.local[0];
+      trip.archived_place_count = 1;
+      trip.archived_visited_count = 1;
+      trip.places = [{
+        id: "current-stop", name: "Current stop", address: "Lviv",
+        latitude: 49.84, longitude: 24.03, visited: true, notes: "",
+      }];
+      showTrip(trip.id);
+    });
+    const deleteButton = page.locator('dialog [data-action="delete-trip"]');
+    assert.equal(await deleteButton.isDisabled(), true);
+    await page.locator('dialog [data-visited="current-stop"]').uncheck();
+    await page.waitForFunction(() =>
+      !document.querySelector('dialog [data-action="delete-trip"]').disabled,
+    );
+    await deleteButton.click();
+    assert.equal(await page.locator("#modal-title").textContent(), "Delete this trip?");
+    assert.match(await page.locator("dialog").innerText(), /archived places/);
+    await page.locator('dialog button[type="submit"]').click();
+    await page.locator("#trips-grid .empty-state").waitFor();
+    assert.equal(await page.locator(".trip-card").count(), 0);
     await page.locator('[data-nav="saved"]').click();
     await page.locator("#saved-grid .empty-state").waitFor();
     assert.match(
@@ -74,7 +98,7 @@ const assert = require("node:assert/strict");
     );
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: direct navigation, page empty states, trip filters and safe text/form template bindings.",
+      "PASS: navigation, empty states, trip filters, safe template bindings and deletion with archived visits.",
     );
   } finally {
     await browser.close();

@@ -89,7 +89,7 @@ class ProjectApiTests(APITestCase):
         self.assertEqual(self.client.get(f'/api/projects/{other.pk}/places/{place.pk}/').status_code, 404)
         self.assertEqual(self.client.get('/api/projects/999999/places/').status_code, 404)
 
-    def test_archived_data_is_not_exposed_as_geography_and_preserves_visit_protection(self):
+    def test_archived_visits_do_not_prevent_deleting_empty_project(self):
         self.project.archived_places = [{'title': 'Old record', 'visited': True}]
         self.project.save()
         response = self.client.get(self.project_url)
@@ -97,4 +97,16 @@ class ProjectApiTests(APITestCase):
         self.assertEqual(response.data['archived_place_count'], 1)
         self.assertEqual(response.data['archived_visited_count'], 1)
         self.assertNotIn('archived_places', response.data)
+        self.assertEqual(self.client.delete(self.project_url).status_code, 204)
+        self.assertFalse(TravelProject.objects.filter(pk=self.project.pk).exists())
+
+    def test_only_current_visits_protect_project_with_archive(self):
+        self.project.archived_places = [{'title': 'Old record', 'visited': True}]
+        self.project.save()
+        place = ProjectPlace.objects.create(project=self.project, visited=True, **geo_place())
         self.assertEqual(self.client.delete(self.project_url).status_code, 409)
+        self.assertTrue(TravelProject.objects.filter(pk=self.project.pk).exists())
+        place.visited = False
+        place.save()
+        self.assertEqual(self.client.delete(self.project_url).status_code, 204)
+        self.assertFalse(ProjectPlace.objects.filter(pk=place.pk).exists())

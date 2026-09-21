@@ -52,6 +52,8 @@ SIMPLE_JWT = {
 
     "AUTH_HEADER_TYPES": ("Bearer",),
     "UPDATE_LAST_LOGIN": False,
+    "CHECK_REVOKE_TOKEN": True,
+    "TOKEN_REFRESH_SERIALIZER": "travel.users.serializers.SecureTokenRefreshSerializer",
 }
 
 # Application definition
@@ -64,8 +66,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
     'travel.apps.TravelConfig',
+    'travel.users.apps.UsersConfig',
 ]
 
 MIDDLEWARE = [
@@ -109,6 +113,15 @@ DATABASES = {
 }
 
 REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_login": "10/min",
+        "auth_register": "5/hour",
+        "auth_email": "5/hour",
+        "auth_verify": "30/hour",
+        "password_reset": "5/hour",
+        "password_reset_confirm": "10/hour",
+    },
     "DEFAULT_AUTHENTICATION_CLASSES": [
         (
             "rest_framework_simplejwt.authentication."
@@ -121,6 +134,15 @@ REST_FRAMEWORK = {
 }
 
 # Password validation
+AUTHENTICATION_BACKENDS = ['travel.users.auth_backend.EmailBackend']
+APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')
+EMAIL_BACKEND = 'travel.users.resend.ResendEmailBackend'
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '').strip()
+RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'Travel Planner <onboarding@resend.dev>')
+RESEND_TIMEOUT = 12
+DEFAULT_FROM_EMAIL = RESEND_FROM_EMAIL
+PASSWORD_RESET_TIMEOUT = 3600
+
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [

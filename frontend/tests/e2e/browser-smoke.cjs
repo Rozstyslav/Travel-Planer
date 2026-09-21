@@ -141,7 +141,7 @@ const fs = require("node:fs");
         url: "https://en.wikipedia.org/wiki/Lviv",
         match: "search",
       });
-    if (url.pathname === "/api/auth/token/")
+    if (url.pathname === "/api/auth/login/")
       return reply(200, { access: "expired", refresh: "refresh-one" });
     if (url.pathname === "/api/auth/token/refresh/") {
       refreshRequests += 1;

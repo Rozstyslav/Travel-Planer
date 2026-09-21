@@ -6,11 +6,11 @@
   </p>
   <form>
     <label class="form-field"
-      >Username<input
+      >Username or email<input
         name="username"
         autocomplete="username"
         required
-        maxlength="150"
+        maxlength="254"
         autofocus
     /></label>
     <label class="form-field"
@@ -20,12 +20,65 @@
         autocomplete="current-password"
         required
     /></label>
-    <p class="form-help">Use an existing account, or continue as a guest.</p>
+    <p class="form-help">Confirm your email before signing in to a new account.</p>
+    <div class="form-actions">
+      <button type="button" class="text-link title-button" data-action="register">Create account</button>
+      <button type="button" class="text-link title-button" data-action="forgot-password">Forgot password?</button>
+    </div>
     <div class="form-actions">
       <button type="button" class="button button-outline" data-action="close">
         Continue as guest
       </button>
       <button type="submit" class="button button-dark">Sign in ↗</button>
+    </div>
+  </form>
+</template>
+
+<template id="account-register">
+  <h2 id="modal-title">Start your next adventure.</h2>
+  <p class="modal-description">Create an account, then confirm your email to sign in.</p>
+  <form>
+    <label class="form-field">Username<input name="username" autocomplete="username" maxlength="150" required autofocus /></label>
+    <label class="form-field">Email<input name="email" type="email" autocomplete="email" maxlength="254" required /></label>
+    <label class="form-field">Password<input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+    <p class="form-help">Use at least 8 characters. Avoid common passwords and personal details.</p>
+    <div class="form-actions">
+      <button type="button" class="button button-outline" data-action="login">Back to sign in</button>
+      <button type="submit" class="button button-dark">Create account</button>
+    </div>
+  </form>
+</template>
+
+<template id="account-email-form">
+  <h2 id="modal-title" data-text="title"></h2>
+  <p class="modal-description" data-text="description"></p>
+  <form>
+    <label class="form-field">Email<input name="email" type="email" autocomplete="email" maxlength="254" required autofocus /></label>
+    <div class="form-actions">
+      <button type="button" class="button button-outline" data-action="login">Back to sign in</button>
+      <button type="submit" class="button button-dark">Send link</button>
+    </div>
+  </form>
+</template>
+
+<template id="account-notice">
+  <h2 id="modal-title" data-text="title"></h2>
+  <p class="modal-description" data-text="message"></p>
+  <div class="form-actions">
+    <button class="button button-outline" data-action="resend-verification">Resend verification</button>
+    <button class="button button-dark" data-action="login">Sign in</button>
+  </div>
+</template>
+
+<template id="account-reset-password">
+  <h2 id="modal-title">Choose a new password.</h2>
+  <p class="modal-description">Use at least 8 characters and a password you haven’t used elsewhere.</p>
+  <form>
+    <label class="form-field">New password<input name="password" type="password" autocomplete="new-password" minlength="8" required autofocus /></label>
+    <label class="form-field">Confirm password<input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required /></label>
+    <div class="form-actions">
+      <button type="button" class="button button-outline" data-action="forgot-password">Request a new link</button>
+      <button type="submit" class="button button-dark">Save password</button>
     </div>
   </form>
 </template>

@@ -230,7 +230,7 @@ export function showNotes(projectId, placeId) {
 
 export function confirmDelete(id) {
   const p = project(id);
-  if (p.archived_visited_count || p.places.some((place) => place.visited)) {
+  if (p.places.some((place) => place.visited)) {
     toast("A trip with visited places cannot be deleted.");
     return;
   }
@@ -354,7 +354,7 @@ export function showTrip(id) {
       total: p.places.length,
       stops,
       full: p.places.length >= 10,
-      protected: Boolean(visited || p.archived_visited_count),
+      protected: Boolean(visited),
     }),
     true,
   );
@@ -366,7 +366,10 @@ export function initTrips() {
     if (state.tokens && !state.loaded) loadProjects();
     else renderTrips();
   });
-  events.addEventListener("session-expired", renderTrips);
+  events.addEventListener("session-expired", () => {
+    cancelProjectLoad();
+    renderTrips();
+  });
   registerActions({
     "create-trip": () => showProjectForm(),
     "create-with-place": ({ id }) => showProjectForm(null, id),

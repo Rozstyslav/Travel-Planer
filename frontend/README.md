@@ -25,6 +25,7 @@ English travel-planning interface built with Django templates, CSS and vanilla J
 - `static/travel/app.css`: responsive styles.
 - `static/travel/images/`, `fonts/`, `*.svg`: visual assets.
 - `tests/e2e/browser-smoke.cjs`: browser scenarios, including discovery, trips, authentication and responsive layout.
+- `tests/e2e/account.cjs`: signup/verification forms, login errors, concurrent token refresh and logout, offline logout, and password reset.
 
 ### Where to edit
 
@@ -39,6 +40,14 @@ English travel-planning interface built with Django templates, CSS and vanilla J
 | Saved empty state / bookmarks | `templates/travel/pages/saved.html` | `static/travel/js/pages/saved.js` |
 | Shared place cards and details | `templates/travel/places/` | `static/travel/js/components/places.js` |
 | Sign-in / account dialogs | `templates/travel/account/dialogs.html` | `static/travel/js/account.js` |
+
+The account dialog supports registration, email verification/resending and password
+reset. Email links open the matching dialog via `#verify-email?token=...` or
+`#reset-password?uid=...&token=...`; the fragment is cleared after it is read.
+Login accepts a username or email. Tokens live in `sessionStorage`. Logout waits
+for any ongoing refresh, revokes the current refresh token and clears local
+credentials even if the network fails. Backend email setup is documented in
+`backend/README.md`.
 
 Edit `components/header.html` for navigation or `base.html` for shared assets
 and metadata. `index.html` connects the page templates.

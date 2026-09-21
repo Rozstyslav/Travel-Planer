@@ -113,7 +113,7 @@ def update_project_place(*, place, notes=None, visited=None):
 def delete_project(*, project):
     with transaction.atomic():
         locked = TravelProject.objects.select_for_update().get(pk=project.pk)
-        if locked.places.filter(visited=True).exists() or any(p.get('visited') for p in locked.archived_places):
+        if locked.places.filter(visited=True).exists():
             raise ProjectHasVisitedPlacesError(
-                'A project containing visited places cannot be deleted, including archived places.')
+                'A project containing visited places cannot be deleted.')
         locked.delete()
