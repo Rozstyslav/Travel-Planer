@@ -26,7 +26,14 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Set `GEOAPIFY_API_KEY` in `backend/.env`. The existing database is `backend/db.sqlite3`.
+Set `SECRET_KEY`, `GEOAPIFY_API_KEY` and the `POSTGRES_*` connection settings in
+`backend/.env` before running these commands. Keep your existing `SECRET_KEY`;
+changing it invalidates signed links and tokens. `.env` is ignored by Git.
+The database is PostgreSQL 14 or newer, accessed through Django and psycopg 3.
+Create the database named by `POSTGRES_DATABASE` before running `migrate`.
+Set `POSTGRES_PASSWORD` if your PostgreSQL server requires a password; for hosted
+databases, also set `POSTGRES_SSLMODE` as required by the provider.
+The old `backend/db.sqlite3` file is no longer used by the application.
 The website is at http://127.0.0.1:8000/ and the API is under `/api/`.
 Django loads HTML and static assets from the sibling `frontend/` directory.
 
@@ -41,6 +48,10 @@ python manage.py makemigrations --check --dry-run
 ```
 
 Provider calls are mocked in the automated suite. Tests use a separate database.
+The PostgreSQL role must be allowed to create test databases (`CREATEDB`). Django
+creates `test_<POSTGRES_DATABASE>` for the suite; never use the application
+database as the test database. Migrations create the schema but do not copy data
+from SQLite.
 
 ## Accounts
 

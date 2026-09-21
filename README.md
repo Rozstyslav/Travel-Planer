@@ -1,7 +1,7 @@
 # Travel Planner
 
 Планувальник подорожей з англійським інтерфейсом: **країна → місто → цікаві місця → опис і фото → маршрут**.
-Інтерфейс працює на Django templates, CSS і JavaScript без збірки. Сервер — Django REST Framework, JWT, SQLite.
+Інтерфейс працює на Django templates, CSS і JavaScript без збірки. Сервер — Django REST Framework, JWT, PostgreSQL.
 
 ## Структура проєкту
 
@@ -62,6 +62,11 @@ Art Institute integration removed. The old numeric `external_id` contract is no 
 ## Локальний запуск
 
 ### Поточний workspace у PyCharm (`tp`)
+
+Підключення до PostgreSQL задається в `backend/.env`: `POSTGRES_HOST`, `POSTGRES_PORT`,
+`POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD`. Там само зберігається
+`SECRET_KEY`. Створіть базу PostgreSQL перед запуском `manage.py migrate`.
+Старий файл SQLite більше не використовується; міграції схеми не переносять із нього дані.
 
 Корінь проєкту й Git — `C:\Users\Rostyk\PycharmProjects\tp`. Тут одразу розташовані `backend`, `frontend`, `docs` і налаштований Python у `.venv`. Запустіть із цього каталогу в PowerShell:
 
