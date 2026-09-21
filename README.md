@@ -26,8 +26,15 @@
 │   ├── Dockerfile
 │   └── .env.example
 ├── frontend/
-│   ├── templates/travel/    # HTML
+│   ├── templates/travel/    # base.html — спільний layout; index.html — включення views
+│   │   ├── pages/          # discover.html, trips.html, saved.html
+│   │   ├── trips/          # Картки, форми, маршрут і вибір місць
+│   │   ├── discover/       # Країни, результати пошуку та описи міст
+│   │   ├── places/         # Спільні картки, деталі та джерела місць
+│   │   ├── account/        # Вхід і вихід
+│   │   └── components/     # header.html, footer.html, modal.html, feedback.html
 │   ├── static/travel/       # JavaScript, CSS, зображення, шрифти
+│   │   └── js/             # pages/, core/, ui/, components/, router.js, main.js
 │   ├── tests/e2e/           # Браузерні сценарії Playwright
 │   ├── package.json
 │   └── package-lock.json

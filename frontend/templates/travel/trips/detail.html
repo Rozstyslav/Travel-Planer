@@ -1,0 +1,84 @@
+<template id="trip-detail">
+  <h2 id="modal-title" data-text="name"></h2>
+  <p class="modal-description">
+    <span data-text="date"></span><br /><span data-text="description"></span>
+  </p>
+  <p class="workspace-note" data-if="archived">
+    Previous places (<span data-text="archived"></span>) are archived. Add new
+    places to build your itinerary.
+  </p>
+  <div class="trip-detail-top">
+    <span class="muted"
+      >Visited <span data-text="visited"></span> of
+      <span data-text="total"></span> · Up to 10 stops</span
+    >
+    <div class="trip-detail-actions">
+      <button
+        class="button button-outline"
+        data-action="edit-trip"
+        data-bind-data-id="id"
+      >
+        Edit
+      </button>
+      <button
+        class="button button-dark"
+        data-action="explore"
+        data-bind-disabled="full"
+      >
+        Add place +
+      </button>
+    </div>
+  </div>
+  <div class="place-list" data-if="total" data-html="stops"></div>
+  <div class="place-list" data-unless="total">
+    <div class="empty-state">
+      <span class="empty-symbol" aria-hidden="true">✳</span>
+      <h2>Room for new experiences</h2>
+      <p>Find a city and add the first stop to your trip.</p>
+    </div>
+  </div>
+  <div class="trip-detail-footer">
+    <p>
+      Trips with visited places, including archived places, cannot be deleted.
+    </p>
+    <button
+      class="button button-danger"
+      data-action="delete-trip"
+      data-bind-data-id="id"
+      data-bind-disabled="protected"
+    >
+      Delete trip
+    </button>
+  </div>
+</template>
+
+<template id="trip-stop">
+  <article class="place-row">
+    <img data-bind-src="image" data-bind-alt="imageTitle" />
+    <div>
+      <h3><span data-text="number"></span> / <span data-text="name"></span></h3>
+      <p data-text="address"></p>
+      <template data-fragment="map"></template>
+      <p class="place-notes" data-if="notes" data-text="notes"></p>
+      <div class="place-actions">
+        <label class="check-label"
+          ><input
+            type="checkbox"
+            data-bind-data-visited="id"
+            data-bind-data-project="projectId"
+            data-bind-checked="visited"
+          />Visited</label
+        >
+        <button
+          class="note-button"
+          data-action="edit-notes"
+          data-bind-data-id="id"
+          data-bind-data-project="projectId"
+        >
+          <span data-if="notes">Edit note</span
+          ><span data-unless="notes">+ Add note</span>
+        </button>
+      </div>
+    </div>
+  </article>
+</template>

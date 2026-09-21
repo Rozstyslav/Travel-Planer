@@ -1,0 +1,90 @@
+<section
+  id="trips-view"
+  class="view inner-view"
+  hidden
+  aria-labelledby="trips-heading"
+>
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">YOUR SPACE TO EXPLORE</p>
+      <h1 id="trips-heading" class="page-title">Adventures <em>ahead.</em></h1>
+    </div>
+    <button class="button button-dark" data-action="create-trip">
+      New trip <span aria-hidden="true">+</span>
+    </button>
+  </div>
+  <div class="workspace-note" id="workspace-note"></div>
+  <div class="trips-toolbar">
+    <div class="filter-group" role="group" aria-label="Trip status">
+      <button class="filter active" data-trip-filter="all" aria-pressed="true">
+        All</button
+      ><button class="filter" data-trip-filter="planned" aria-pressed="false">
+        Planned</button
+      ><button class="filter" data-trip-filter="complete" aria-pressed="false">
+        Visited
+      </button>
+    </div>
+    <span id="trip-total" class="muted"></span>
+  </div>
+  <div id="trips-grid" class="trips-grid" aria-live="polite"></div>
+
+  <!-- Shown by pages/trips.js when there are no trips yet. -->
+  <template id="trips-empty">
+    <div class="empty-state">
+      <span class="empty-symbol" aria-hidden="true">✳</span>
+      <h2>It starts with curiosity</h2>
+      <p>
+        Give your next adventure a name. Then add the places you dream of
+        seeing.
+      </p>
+      <button class="button button-dark" data-action="create-trip">
+        Create trip <span aria-hidden="true">↗</span>
+      </button>
+    </div>
+  </template>
+  <template id="trips-filter-empty">
+    <div class="empty-state">
+      <span class="empty-symbol" aria-hidden="true">✳</span>
+      <h2>Nothing here yet</h2>
+      <p>Trips with this status will appear here.</p>
+      <button class="button button-dark" data-action="create-trip">
+        Create trip <span aria-hidden="true">↗</span>
+      </button>
+    </div>
+  </template>
+  <template id="trips-loading">
+    <div class="loading-state" role="status">Loading your trips…</div>
+  </template>
+  <template id="trips-error">
+    <div class="empty-state error-state">
+      <span class="empty-symbol">↻</span>
+      <h2>Could not load your trips</h2>
+      <p data-text="message"></p>
+      <button class="button button-dark" data-action="retry-trips">
+        Try again
+      </button>
+    </div>
+  </template>
+  <template id="workspace-guest">
+    <span
+      ><span class="status-dot"></span>Guest workspace. Trips are saved only in
+      this browser.</span
+    >
+    <button data-action="login">Sign in to the workspace ↗</button>
+  </template>
+  <template id="workspace-account">
+    <span
+      ><span class="status-dot"></span>Shared workspace: trips are saved on the
+      server and available to signed-in users.</span
+    >
+  </template>
+
+  <!-- Trip cards -->
+  {% include "travel/trips/card.html" %}
+  <!-- Create/edit, notes and delete dialogs -->
+  {% include "travel/trips/forms.html" %}
+  <!-- Itinerary, stops and place picker -->
+  {% include "travel/trips/detail.html" %}
+  <!-- Add a discovered or saved place to a trip -->
+  {% include "travel/trips/add-place.html" %}
+</section>

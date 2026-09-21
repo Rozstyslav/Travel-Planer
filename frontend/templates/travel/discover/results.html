@@ -1,0 +1,70 @@
+<template id="discovery-empty">
+  <div class="empty-state">
+    <span class="empty-symbol" aria-hidden="true">✳</span>
+    <h2>Next stop: your city</h2>
+    <p>Find a city above to discover interesting places nearby.</p>
+  </div>
+</template>
+<template id="cities-empty">
+  <div class="empty-state">
+    <span class="empty-symbol" aria-hidden="true">✳</span>
+    <h2>City not found</h2>
+    <p>Check the name or try another country.</p>
+  </div>
+</template>
+<template id="places-empty">
+  <div class="empty-state">
+    <span class="empty-symbol" aria-hidden="true">✳</span>
+    <h2>No places found here yet</h2>
+    <p>Try another category or a wider search radius.</p>
+  </div>
+</template>
+<template id="country-option">
+  <option data-bind-value="code" data-text="label"></option>
+</template>
+<template id="country-info-content">
+  <strong
+    ><span class="country-flag" aria-hidden="true" data-text="emoji"></span>
+    <span data-text="name"></span
+  ></strong>
+  <span>Capital: <span data-text="capital"></span></span>
+  <span>Currency: <span data-text="currency"></span></span>
+  <span>Languages: <span data-text="languages"></span></span>
+</template>
+<template id="city-option">
+  <button
+    class="city-option"
+    data-action="select-city"
+    data-bind-data-index="index"
+    aria-pressed="false"
+  >
+    <strong data-text="name"></strong><span data-text="address"></span
+    ><b aria-hidden="true">↗</b>
+  </button>
+</template>
+<template id="city-results-content">
+  <p class="muted">Top result</p>
+  <div class="city-options city-primary" data-html="primary"></div>
+  <details class="other-cities" data-if="otherCount">
+    <summary>Other matches (<span data-text="otherCount"></span>)</summary>
+    <p class="muted">
+      Different places can share a name. Check the region before choosing.
+    </p>
+    <div class="city-options" data-html="others"></div>
+  </details>
+</template>
+<template id="city-story-content">
+  <img data-if="image" data-bind-src="image" data-bind-alt="title" />
+  <div>
+    <p class="eyebrow">MEET THE CITY · WIKIPEDIA SEARCH RESULT</p>
+    <h3 data-text="title"></h3>
+    <p data-text="description"></p>
+    <template data-fragment="attribution"></template>
+  </div>
+</template>
+<template id="city-story-error">
+  <p class="muted">
+    The city description is temporarily unavailable. You can still explore
+    places.
+  </p>
+</template>

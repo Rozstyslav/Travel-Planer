@@ -1,0 +1,102 @@
+<template id="trip-form">
+  <h2 id="modal-title" data-if="editing">Your trip details.</h2>
+  <h2 id="modal-title" data-unless="editing">Where will curiosity take you?</h2>
+  <p class="modal-description">
+    <span data-if="editing">Update the name, date, or your plans.</span>
+    <span data-unless="editing"
+      >Start with an idea. The rest will unfold along the way.</span
+    >
+    <span data-if="signedIn">Saved to the shared workspace.</span>
+    <span data-unless="signedIn">Saved in this browser.</span>
+  </p>
+  <form>
+    <label class="form-field"
+      >Trip name<input
+        name="name"
+        placeholder="Weekend in Lviv"
+        data-value="name"
+        required
+        maxlength="255"
+        autofocus
+    /></label>
+    <label class="form-field"
+      >When do we start?<input
+        name="start_date"
+        type="date"
+        data-value="startDate"
+    /></label>
+    <label class="form-field"
+      >Ideas and plans<textarea
+        name="description"
+        placeholder="Slow walks, a lovely park, a good coffee…"
+        maxlength="5000"
+        data-value="description"
+      ></textarea>
+    </label>
+    <p class="form-help" data-if="selectedPlace">
+      Your first stop will be “<span data-text="selectedPlace"></span>”.
+    </p>
+    <div class="form-actions">
+      <button
+        type="button"
+        class="button button-outline"
+        data-bind-data-action="cancelAction"
+        data-bind-data-id="id"
+      >
+        Cancel
+      </button>
+      <button type="submit" class="button button-dark">
+        <span data-if="editing">Save changes</span
+        ><span data-unless="editing">Create trip</span> ↗
+      </button>
+    </div>
+  </form>
+</template>
+
+<template id="trip-notes-form">
+  <h2 id="modal-title">Details worth remembering.</h2>
+  <p class="modal-description" data-text="name"></p>
+  <form>
+    <label class="form-field"
+      >Your note<textarea
+        name="notes"
+        maxlength="2000"
+        autofocus
+        placeholder="What stood out? What would you like to remember?"
+        data-value="notes"
+      ></textarea>
+    </label>
+    <p class="form-help">Up to 2,000 characters.</p>
+    <div class="form-actions">
+      <button
+        type="button"
+        class="button button-outline"
+        data-action="trip-detail"
+        data-bind-data-id="id"
+      >
+        Cancel
+      </button>
+      <button type="submit" class="button button-dark">Save note ↗</button>
+    </div>
+  </form>
+</template>
+
+<template id="trip-delete-form">
+  <h2 id="modal-title">Delete this trip?</h2>
+  <p class="modal-description">
+    “<span data-text="name"></span>” and its notes will be permanently deleted.
+  </p>
+  <form>
+    <div class="form-actions">
+      <button
+        type="button"
+        class="button button-outline"
+        data-action="trip-detail"
+        data-bind-data-id="id"
+      >
+        Keep trip
+      </button>
+      <button type="submit" class="button button-danger">Yes, delete</button>
+    </div>
+  </form>
+</template>

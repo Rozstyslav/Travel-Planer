@@ -1,0 +1,305 @@
+{% load static %}
+<!-- Search results and empty states -->
+{% include "travel/discover/results.html" %}
+<section id="discover-view" class="view">
+  <div class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">
+        <span class="tiny-star">✳</span> SLOW DOWN. DISCOVER MORE.
+      </p>
+      <h1>
+        The world awaits<br />your
+        <span class="serif-word">curiosity.</span>
+      </h1>
+      <p class="hero-description">
+        Collect places that inspire you. Create your own<br
+          class="desktop-break"
+        />
+        routes. Leave room for the unexpected.
+      </p>
+      <div class="hero-actions">
+        <button class="button button-dark" data-action="create-trip">
+          Plan a trip <span aria-hidden="true">↗</span>
+        </button>
+        <a class="text-link" href="#collection">
+          Find inspiration <span aria-hidden="true">↓</span>
+        </a>
+      </div>
+      <div class="hero-note">
+        <span class="note-line"></span>
+        <p>Your next story<br />starts with one place.</p>
+        <span class="hand-arrow" aria-hidden="true">⤴</span>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="photo-frame">
+        <img
+          class="hero-photo"
+          src="{% static 'travel/images/chicago.jpg' %}"
+          width="1100"
+          height="1300"
+          alt="The historic Chicago Theatre sign among city buildings"
+          fetchpriority="high"
+        />
+        <div class="photo-shade"></div>
+        <span class="photo-coordinate">
+          CHICAGO, ILLINOIS · 41.88°N 87.63°W
+        </span>
+        <div class="photo-caption">
+          <span>START SOMEWHERE BEAUTIFUL</span>
+          <p>Meet me<br /><i>in a new city.</i></p>
+          <a
+            href="#collection"
+            class="round-link"
+            aria-label="Find a city for your trip"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M6 18 18 6M6 6h12v12" />
+            </svg>
+          </a>
+        </div>
+      </div>
+      <div class="travel-stamp" aria-hidden="true">
+        <span>COLLECT MOMENTS</span><b>✳</b>
+        <span>MAKE MEMORIES · EXPLORE</span>
+      </div>
+      <a class="art-postcard destination-postcard" href="#collection">
+        <svg
+          class="postcard-globe"
+          viewBox="0 0 160 112"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle class="globe-fill" cx="80" cy="56" r="36" />
+          <g class="globe-grid">
+            <circle cx="80" cy="56" r="36" />
+            <ellipse cx="80" cy="56" rx="17" ry="36" />
+            <path d="M44 56h72M49 38q31 13 62 0M49 74q31-13 62 0M80 20v72" />
+          </g>
+          <ellipse
+            class="globe-route"
+            cx="80"
+            cy="56"
+            rx="65"
+            ry="21"
+            transform="rotate(-28 80 56)"
+          />
+          <circle class="globe-stop" cx="29" cy="80" r="4" />
+          <path
+            class="globe-pin"
+            d="M114 22a8 8 0 0 1 16 0c0 6-8 14-8 14s-8-8-8-14Z"
+          />
+          <circle class="globe-pin-center" cx="122" cy="22" r="2.5" />
+          <path class="globe-grid" d="M26 22v10m-5-5h10M132 82v8m-4-4h8" />
+        </svg>
+        <div>
+          <span class="postcard-kicker">A WORLD TO DISCOVER</span>
+          <p>The world is closer than you think.</p>
+          <span class="postcard-action"
+            >Find your next stop
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M6 18 18 6M6 6h12v12" /></svg
+          ></span>
+        </div>
+      </a>
+      <span class="visual-index">01 / UNFORGETTABLE DISCOVERIES</span>
+    </div>
+  </div>
+  <div class="manifesto-strip">
+    <span>TRAVEL AT YOUR OWN PACE</span><span aria-hidden="true">✳</span
+    ><span>NEW COUNTRIES AWAIT</span><span aria-hidden="true">✳</span
+    ><span>PLACES WITH A STORY</span><span aria-hidden="true">✳</span
+    ><span>YOUR OWN WAY TO GO</span>
+  </div>
+
+  <section
+    class="collection section-space"
+    id="collection"
+    aria-labelledby="collection-heading"
+  >
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">01 / COUNTRIES & PLACES</p>
+        <h2 id="collection-heading">Find your <em>next somewhere.</em></h2>
+      </div>
+      <p class="section-intro">
+        Pick a country. Find a city.<br />Sights, parks, and your next favourite
+        coffee await.
+      </p>
+    </div>
+    <form id="destination-form" class="destination-form">
+      <label class="form-field"
+        >Country<select
+          id="country-select"
+          name="country"
+          aria-describedby="country-info"
+        >
+          <option value="">Loading countries…</option>
+        </select></label
+      ><label class="form-field"
+        >City<input
+          id="city-query"
+          name="q"
+          type="search"
+          required
+          minlength="2"
+          maxlength="150"
+          placeholder="For example, Lviv"
+          autocomplete="off" /></label
+      ><button type="submit" class="button button-dark">Find a city ↗</button>
+    </form>
+    <div id="country-info" class="country-info" aria-live="polite"></div>
+    <div id="city-results" class="city-results" aria-live="polite"></div>
+    <div id="city-story" class="city-story" hidden></div>
+    <div class="collection-toolbar">
+      <div class="filter-group" role="group" aria-label="Place category">
+        <button
+          class="filter active"
+          data-category="tourism.sights"
+          aria-pressed="true"
+        >
+          Sights</button
+        ><button
+          class="filter"
+          data-category="entertainment.museum"
+          aria-pressed="false"
+        >
+          Museums</button
+        ><button
+          class="filter"
+          data-category="leisure.park"
+          aria-pressed="false"
+        >
+          Parks</button
+        ><button
+          class="filter"
+          data-category="catering.cafe"
+          aria-pressed="false"
+        >
+          Cafés</button
+        ><button
+          class="filter"
+          data-category="catering.restaurant"
+          aria-pressed="false"
+        >
+          Restaurants
+        </button>
+      </div>
+      <div class="discovery-options">
+        <label id="sight-sort-field" class="radius-field"
+          >Show<select id="sight-sort">
+            <option value="highlights">Highlights</option>
+            <option value="distance">Nearest first</option>
+          </select></label
+        ><label class="radius-field"
+          >Radius<select id="search-radius">
+            <option value="2000">2 km</option>
+            <option value="5000" selected>5 km</option>
+            <option value="10000">10 km</option>
+          </select></label
+        >
+      </div>
+    </div>
+    <p id="places-context" class="muted"></p>
+    <div id="places-grid" class="art-grid" aria-live="polite"></div>
+    <div class="form-actions">
+      <button id="load-more" class="button button-outline" hidden>
+        More places ↓
+      </button>
+    </div>
+    <div class="collection-footnote">
+      <span
+        >Countries:
+        <a
+          href="https://countries.trevorblades.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Countries</a
+        >
+        · Places:
+        <a
+          href="https://www.geoapify.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Geoapify</a
+        >
+        /
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noopener noreferrer"
+          >© OpenStreetMap</a
+        ></span
+      ><a
+        href="https://en.wikipedia.org/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Stories: Wikipedia ↗</a
+      >
+    </div>
+  </section>
+
+  <section
+    class="journey-section section-space"
+    aria-labelledby="journey-heading"
+  >
+    <div class="journey-heading">
+      <p class="eyebrow">02 / FROM AN IDEA TO A JOURNEY</p>
+      <h2 id="journey-heading">
+        Great journeys<br />begin with <em>“let’s go.”</em>
+      </h2>
+      <button class="button button-dark" data-action="create-trip">
+        Let’s make a plan <span aria-hidden="true">↗</span>
+      </button>
+    </div>
+    <div class="journey-steps">
+      <article>
+        <span class="step-number">01</span>
+        <div>
+          <h3>Find what moves you</h3>
+          <p>
+            Choose a country, find a city, and discover places with stories to
+            tell.
+          </p>
+        </div>
+        <span aria-hidden="true">↗</span>
+      </article>
+      <article>
+        <span class="step-number">02</span>
+        <div>
+          <h3>Make it your journey</h3>
+          <p>Add up to 10 stops, pick a date, and jot down your ideas.</p>
+        </div>
+        <span aria-hidden="true">↗</span>
+      </article>
+      <article>
+        <span class="step-number">03</span>
+        <div>
+          <h3>Be in the moment</h3>
+          <p>
+            Mark places as visited and leave notes. The best memories are in the
+            details.
+          </p>
+        </div>
+        <span aria-hidden="true">↗</span>
+      </article>
+    </div>
+  </section>
+  <section class="closing-banner">
+    <span class="closing-star" aria-hidden="true">✳</span>
+    <p>
+      Leave room for the unexpected.<br /><em
+        >Start with a little curiosity.</em
+      >
+    </p>
+    <button
+      class="round-link"
+      data-action="create-trip"
+      aria-label="Create your first trip"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6 18 18 6M6 6h12v12" />
+      </svg>
+    </button>
+  </section>
+</section>

@@ -1,0 +1,56 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f3eb" />
+    <meta
+      name="description"
+      content="Travel Planner — choose a country, discover cities and places, and plan your next trip."
+    />
+    <title>Travel Planner — travel with curiosity</title>
+    <link
+      rel="icon"
+      href="{% static 'travel/favicon.svg' %}"
+      type="image/svg+xml"
+    />
+    <link
+      rel="stylesheet"
+      href="{% static 'travel/app.css' %}?v={{ frontend_version }}"
+    />
+    <!-- prettier-ignore -->
+    <script type="importmap">{{ frontend_importmap|safe }}</script>
+    <script
+      src="{% static 'travel/app.js' %}?v={{ frontend_version }}"
+      type="module"
+    ></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="site-shell">
+      {% include "travel/components/header.html" %}
+
+      <main id="main" tabindex="-1">{% block content %}{% endblock %}</main>
+      {% include "travel/components/footer.html" %}
+    </div>
+    {% include "travel/components/modal.html" %}
+    <!-- Shared loading and error states -->
+    {% include "travel/components/feedback.html" %}
+    <!-- Account dialogs -->
+    {% include "travel/account/dialogs.html" %}
+    <!-- Shared place cards and details used by Discover, Saved and Trips -->
+    {% include "travel/places/card.html" %}
+    <!-- Place details -->
+    {% include "travel/places/detail.html" %}
+    <!-- Place attribution and map links -->
+    {% include "travel/places/credits.html" %}
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <noscript
+      ><div class="noscript-note">
+        Enable JavaScript in your browser to find countries and places and plan
+        trips.
+      </div></noscript
+    >
+  </body>
+</html>

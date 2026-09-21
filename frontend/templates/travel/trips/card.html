@@ -1,0 +1,92 @@
+<template id="trip-card">
+  <article class="trip-card" data-bind-data-trip-id="id">
+    <template data-fragment="coverMarkup"></template>
+    <div class="trip-body">
+      <div class="trip-topline">
+        <span data-if="complete">✓ VISITED</span>
+        <span data-unless="complete">↗ PLANNED</span>
+        <span data-text="date"></span>
+      </div>
+      <h2 data-text="name"></h2>
+      <p
+        class="trip-description"
+        data-if="description"
+        data-text="description"
+      ></p>
+      <p class="trip-description" data-unless="description">
+        A new route, new stories. Add places you want to see.
+      </p>
+      <div
+        class="progress-track"
+        role="progressbar"
+        aria-label="Trip progress"
+        data-bind-aria-valuenow="visited"
+        aria-valuemin="0"
+        data-bind-aria-valuemax="maxStops"
+      >
+        <span data-bind-style="progressStyle"></span>
+      </div>
+      <div class="trip-bottom">
+        <span class="muted"
+          >Visited <span data-text="visited"></span> of
+          <span data-text="total"></span
+        ></span>
+        <button
+          class="text-link title-button"
+          data-action="trip-detail"
+          data-bind-data-id="id"
+        >
+          Open itinerary ↗
+        </button>
+      </div>
+    </div>
+  </article>
+</template>
+
+<template id="trip-card-cover">
+    <div class="trip-cover" data-bind-data-tone="coverTone">
+      <div class="trip-cover-summary">
+        <span class="trip-cover-label">YOUR ITINERARY</span>
+        <span class="trip-stop-count">
+          <strong data-text="stopCount"></strong>
+          <span data-text="stopLabel"></span>
+        </span>
+      </div>
+      <div
+        class="trip-association"
+        data-if="cover"
+        role="img"
+        data-bind-aria-label="coverLabel"
+      >
+        <span class="trip-association-icon" aria-hidden="true" data-text="coverIcon"></span>
+        <span
+          class="trip-association-flag country-flag"
+          aria-hidden="true"
+          data-if="coverFlag"
+          data-text="coverFlag"
+        ></span>
+      </div>
+      <svg
+        data-unless="cover"
+        class="trip-route-art"
+        viewBox="0 0 180 90"
+        fill="none"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M16 69H57C84 69 66 21 99 21H131C159 21 139 69 165 69"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-dasharray="4 5"
+          stroke-linecap="round"
+        />
+        <g fill="var(--trip-cover-bg)" stroke="currentColor" stroke-width="1.5">
+          <circle cx="16" cy="69" r="5" />
+          <circle cx="105" cy="21" r="5" />
+          <circle cx="165" cy="69" r="5" />
+        </g>
+        <circle cx="165" cy="69" r="1.5" fill="currentColor" />
+      </svg>
+    </div>
+</template>

@@ -1,0 +1,61 @@
+<template id="place-map-link">
+  <a
+    class="text-link coordinates-link"
+    data-bind-href="url"
+    target="_blank"
+    rel="noopener noreferrer"
+    data-bind-aria-label="ariaLabel"
+    data-text="label"
+  ></a>
+</template>
+<template id="place-photo-credit">
+  <span data-if="search">Photo found by name · check the match.<br /></span>
+  <a
+    class="text-link"
+    data-bind-href="url"
+    target="_blank"
+    rel="noopener noreferrer"
+    >Wikimedia photo · source and licence ↗</a
+  >
+</template>
+<template id="place-wiki-credit">
+  <p class="detail-caption wiki-attribution">
+    <a data-bind-href="url" target="_blank" rel="noopener noreferrer"
+      >Wikipedia contributors · source and images ↗</a
+    >
+    <span
+      >Text:
+      <a
+        href="https://creativecommons.org/licenses/by-sa/4.0/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >CC BY-SA 4.0</a
+      ></span
+    >
+    <span class="photo-licence-note"
+      >Photo licence details are on its file page.</span
+    >
+  </p>
+</template>
+<template id="place-sources">
+  <details class="detail-sources">
+    <summary>Sources &amp; credits</summary>
+    <p data-if="descriptionURL">
+      <a
+        data-bind-href="descriptionURL"
+        target="_blank"
+        rel="noopener noreferrer"
+        ><span data-text="source"></span> ↗</a
+      >
+      ·
+      <a
+        data-bind-href="licenceURL"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-text="licence"
+      ></a>
+    </p>
+    <p data-if="photoCredit" data-html="photoCredit"></p>
+    <p>Map data: Geoapify / © OpenStreetMap contributors.</p>
+  </details>
+</template>

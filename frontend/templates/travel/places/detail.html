@@ -1,0 +1,79 @@
+<template id="place-detail-loading">
+  <h2 id="modal-title">Getting to know this place…</h2>
+  <div class="loading-state" role="status">Loading details and stories</div>
+</template>
+
+<template id="place-detail">
+  <div data-bind-class="detailClass">
+    <div class="place-detail-overview">
+      <img
+        class="detail-photo"
+        data-if="image"
+        data-bind-src="image"
+        data-bind-alt="name"
+      />
+      <div class="place-detail-content">
+        <div class="place-detail-heading">
+          <div
+            class="detail-symbol"
+            data-unless="image"
+            data-html="illustration"
+          ></div>
+          <p class="eyebrow" data-text="category"></p>
+        </div>
+        <h2 id="modal-title" data-text="name"></h2>
+        <p class="detail-address" data-if="address" data-text="address"></p>
+      </div>
+    </div>
+    <template data-fragment="story"></template>
+    <button
+      class="story-retry title-button"
+      data-if="retry"
+      data-action="retry-description"
+      data-bind-data-id="id"
+    >
+      Load more about this place ↻
+    </button>
+    <div class="place-detail-actions">
+      <button
+        class="button button-dark"
+        data-action="add-place"
+        data-bind-data-id="id"
+      >
+        Add to trip <span aria-hidden="true">+</span>
+      </button>
+      <template data-fragment="map"></template>
+    </div>
+    <template data-fragment="sources"></template>
+  </div>
+</template>
+
+<template id="place-detail-error">
+  <h2 id="modal-title">Could not load details</h2>
+  <p class="modal-description" data-text="message"></p>
+  <button
+    class="button button-dark"
+    data-action="place-detail"
+    data-bind-data-id="id"
+  >
+    Retry ↻
+  </button>
+</template>
+
+<template id="place-story">
+  <section class="place-story">
+    <h3 data-if="search">Related reading</h3>
+    <h3 data-unless="search">About this place</h3>
+    <p class="story-title" data-if="title" data-text="title"></p>
+    <template data-fragment="content"></template>
+  </section>
+</template>
+<template id="place-story-paragraph">
+  <p data-text="text"></p>
+</template>
+<template id="place-story-more">
+  <details class="story-more">
+    <summary>Read more</summary>
+    <template data-fragment="content"></template>
+  </details>
+</template>

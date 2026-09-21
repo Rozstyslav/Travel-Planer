@@ -1,0 +1,48 @@
+<template id="trip-add-place-loading">
+  <h2 id="modal-title">Choosing a trip…</h2>
+  <div class="loading-state" role="status">Getting this stop ready</div>
+</template>
+
+<template id="trip-add-place">
+  <h2 id="modal-title">A place in your journey.</h2>
+  <p class="modal-description" data-text="name"></p>
+  <form data-if="hasTrips">
+    <label class="form-field"
+      >Trip<select name="project_id" data-html="options"></select
+    ></label>
+    <div class="form-actions">
+      <button type="submit" class="button button-dark">
+        Add to itinerary +
+      </button>
+    </div>
+  </form>
+  <p class="modal-description" data-unless="hasTrips">
+    Create a trip or choose another place. Your current trips already include
+    this stop or have all 10 stops filled.
+  </p>
+  <div class="form-actions">
+    <button
+      class="button button-outline"
+      data-action="create-with-place"
+      data-bind-data-id="id"
+    >
+      New trip ↗
+    </button>
+  </div>
+</template>
+
+<template id="trip-select-option">
+  <option data-bind-value="id" data-text="label"></option>
+</template>
+
+<template id="trip-add-place-error">
+  <h2 id="modal-title">Could not add this place</h2>
+  <p class="modal-description" data-text="message"></p>
+  <button
+    class="button button-dark"
+    data-action="add-place"
+    data-bind-data-id="id"
+  >
+    Retry ↻
+  </button>
+</template>

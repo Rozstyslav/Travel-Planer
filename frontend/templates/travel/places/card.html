@@ -1,0 +1,72 @@
+<template id="place-card">
+  <article class="art-card" data-bind-data-place-id="id">
+    <div class="art-image-wrap">
+      <button
+        class="art-image-button"
+        data-action="place-detail"
+        data-bind-data-id="id"
+        data-bind-aria-label="detailLabel"
+      >
+        <img
+          data-if="image"
+          data-bind-src="image"
+          data-bind-alt="imageTitle"
+          loading="lazy"
+        />
+        <template data-unless="image" data-fragment="illustration"></template>
+      </button>
+    </div>
+    <div class="art-card-meta">
+      <span class="place-category" data-text="category"></span>
+      <h3>
+        <button
+          class="title-button"
+          data-action="place-detail"
+          data-bind-data-id="id"
+          data-text="name"
+        ></button>
+      </h3>
+      <p class="place-address" data-text="address"></p>
+    </div>
+    <button
+      class="save-button"
+      data-action="save"
+      data-bind-data-id="id"
+      data-bind-aria-label="saveLabel"
+      data-bind-aria-pressed="saved"
+    >
+      <svg viewBox="0 0 16 20" aria-hidden="true">
+        <path d="M3 2h10v15l-5-3-5 3Z" />
+      </svg>
+    </button>
+    <div class="place-card-footer">
+      <template data-fragment="map"></template>
+      <button
+        class="art-add"
+        data-action="add-place"
+        data-bind-data-id="id"
+        data-bind-aria-label="addLabel"
+      >
+        Add to trip <span aria-hidden="true">+</span>
+      </button>
+    </div>
+    <p class="detail-caption card-image-credit" data-html="photoCredit"></p>
+  </article>
+</template>
+
+<template id="place-photo">
+  <img data-bind-src="image" data-bind-alt="name" loading="lazy" />
+</template>
+<template id="place-illustration">
+  <span data-bind-class="className" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      data-html="path"
+    ></svg>
+  </span>
+</template>

@@ -2,10 +2,11 @@
   "name": "travel-planner-frontend",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Travel Planner templates, static assets and browser tests",
   "scripts": {
-    "check": "node --check static/travel/app.js",
-    "test": "node tests/e2e/asset-cache.cjs && node tests/e2e/browser-smoke.cjs"
+    "check": "node scripts/check-javascript.cjs",
+    "test": "node --test tests/unit/*.test.js && node tests/e2e/asset-cache.cjs && node tests/e2e/template-views.cjs && node tests/e2e/trip-covers.cjs && node tests/e2e/browser-smoke.cjs"
   },
   "devDependencies": {
     "playwright": "1.63.0"

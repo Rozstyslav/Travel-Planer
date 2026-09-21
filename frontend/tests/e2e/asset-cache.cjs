@@ -26,7 +26,7 @@ const http = require("node:http");
         response.writeHead(data ? 200 : 404, { "Content-Type": "application/json" });
         return response.end(JSON.stringify(data || {}));
       }
-      if (/\/app\.(js|css)$/.test(url.pathname)) {
+      if (/\/(?:app\.(js|css)|js\/.*\.js)$/.test(url.pathname)) {
         assets.push(request.url);
         if (!url.search) {
           legacyRequests++;
@@ -68,6 +68,9 @@ const http = require("node:http");
     assert.equal(legacyRequests, 2);
     assert.ok(assets.some((url) => /app\.css\?v=[a-f0-9]{16}$/.test(url)));
     assert.ok(assets.some((url) => /app\.js\?v=[a-f0-9]{16}$/.test(url)));
+    const modules = assets.filter((url) => url.includes('/travel/js/'));
+    assert.ok(modules.length > 0, 'The module entry point loads its dependencies');
+    assert.ok(modules.every((url) => /\?v=[a-f0-9]{16}$/.test(url)), 'Every module bypasses stale cached code');
     await page.locator("#country-select").selectOption("CH");
     await page.locator(".country-flag").waitFor();
     assert.equal(await page.locator(".country-flag").textContent(), "🇨🇭");
