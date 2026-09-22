@@ -58,6 +58,9 @@ export function bindForm(handler) {
 export function initModal() {
   $("#close-modal").addEventListener("click", closeModal);
   modal.addEventListener("close", () => {
+    // The close event is queued: a successful login may already have reopened
+    // the dialog for the requested action. Do not invalidate that new dialog.
+    if (modal.open) return;
     modalVersion += 1;
     document.body.classList.remove("modal-open");
     if (lastFocus?.isConnected) lastFocus.focus();

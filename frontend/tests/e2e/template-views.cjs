@@ -1,5 +1,6 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
+const workspaceMock = require("./workspace-mock.cjs");
 
 (async () => {
   const browser = await chromium.launch({
@@ -10,9 +11,12 @@ const assert = require("node:assert/strict");
     const page = await browser.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.route("**/api/**", (route) =>
-      route.fulfill({ json: { results: [] } }),
-    );
+    await page.addInitScript(() => sessionStorage.setItem("tp-session-v1", JSON.stringify({ access: "test", refresh: "test" })));
+    const workspace = workspaceMock();
+    await page.route("**/api/**", async (route) => {
+      if (await workspace(route)) return;
+      return route.fulfill({ json: { results: [] } });
+    });
     const base = process.env.BASE_URL || "http://127.0.0.1:8000";
     for (const view of ["trips", "saved", "discover"]) {
       await page.goto(`${base}/#${view}`);
@@ -69,7 +73,7 @@ const assert = require("node:assert/strict");
     await page.evaluate(async () => {
       const { state } = await import("travel/core/state.js");
       const { showTrip } = await import("travel/pages/trips.js");
-      const trip = state.local[0];
+      const trip = state.remote[0];
       trip.archived_place_count = 1;
       trip.archived_visited_count = 1;
       trip.places = [{

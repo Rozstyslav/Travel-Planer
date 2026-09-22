@@ -5,8 +5,11 @@ import { events } from "travel/core/events.js";
 let refreshPromise;
 
 export function clearSession() {
+  state.sessionVersion += 1;
   state.tokens = null;
   state.remote = [];
+  state.saved.clear();
+  state.savedLoaded = false;
   state.loaded = false;
   persist("tp-session-v1", null, "sessionStorage");
   events.dispatchEvent(new Event("session-expired"));
@@ -105,6 +108,7 @@ export async function refreshSession() {
 
 export async function api(path, options = {}, retry = true) {
   if (!state.tokens) throw new Error("Please sign in to continue.");
+  const sessionVersion = state.sessionVersion;
   const { response, data } = await fetchJSON(`/api/${path}`, {
     ...options,
     headers: {
@@ -113,10 +117,13 @@ export async function api(path, options = {}, retry = true) {
       ...options.headers,
     },
   });
+  if (sessionVersion !== state.sessionVersion)
+    throw new Error("Your session has changed. Please try again.");
   if (response.status === 401 && retry) {
     await refreshSession();
     return api(path, options, false);
   }
+  if (response.status === 401) clearSession();
   if (!response.ok) throw new Error(errorMessage(data, response.status));
   return data;
 }

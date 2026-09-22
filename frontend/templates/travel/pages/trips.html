@@ -13,7 +13,7 @@
       New trip <span aria-hidden="true">+</span>
     </button>
   </div>
-  <div class="workspace-note" id="workspace-note"></div>
+  <div class="workspace-note" id="workspace-note" data-workspace-note></div>
   <div class="trips-toolbar">
     <div class="filter-group" role="group" aria-label="Trip status">
       <button class="filter active" data-trip-filter="all" aria-pressed="true">
@@ -29,6 +29,13 @@
   <div id="trips-grid" class="trips-grid" aria-live="polite"></div>
 
   <!-- Shown by pages/trips.js when there are no trips yet. -->
+  <template id="trips-guest">
+    <div class="empty-state">
+      <span class="empty-symbol" aria-hidden="true">✳</span>
+      <h2>Your next adventure starts here</h2>
+      <p>Explore places freely. Sign in to create your own trips and keep all your plans together.</p>
+    </div>
+  </template>
   <template id="trips-empty">
     <div class="empty-state">
       <span class="empty-symbol" aria-hidden="true">✳</span>
@@ -67,15 +74,13 @@
   </template>
   <template id="workspace-guest">
     <span
-      ><span class="status-dot"></span>Guest workspace. Trips are saved only in
-      this browser.</span
+      ><span class="status-dot"></span>Explore as a guest. Sign in to save places and plan trips.</span
     >
-    <button data-action="login">Sign in to the workspace ↗</button>
+    <button data-action="login">Sign in ↗</button>
   </template>
   <template id="workspace-account">
     <span
-      ><span class="status-dot"></span>Shared workspace: trips are saved on the
-      server and available to signed-in users.</span
+      ><span class="status-dot"></span>Your personal workspace. Trips and favourite places are saved to your account.</span
     >
   </template>
 

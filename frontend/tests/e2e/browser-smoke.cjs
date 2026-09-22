@@ -2,6 +2,7 @@ const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const fs = require("node:fs");
+const workspaceMock = require("./workspace-mock.cjs");
 
 (async () => {
   const browser = await chromium.launch({
@@ -55,12 +56,22 @@ const fs = require("node:fs");
   const france = { ...country, code: "FR", name: "France", emoji: "🇫🇷", capital: "Paris", currency: "EUR" };
   const serverProject = {
     id: 77,
-    name: "Shared trip",
+    name: "My trip",
     description: "",
     start_date: null,
     places: [],
   };
   let refreshRequests = 0;
+  let loginCount = 0;
+  let layoutPlaces = [];
+  const resolvePlace = (id) => layoutPlaces.find((p) => p.place_id === id) || place;
+  let workspace = workspaceMock([], resolvePlace);
+  const signIn = async () => {
+    await page.locator('dialog [name="username"]').fill("browser-test");
+    await page.locator('dialog [name="password"]').fill("not-a-real-password");
+    await page.locator('dialog button[type="submit"]').click();
+    await page.waitForFunction(() => document.querySelector("#account-label").textContent === "Account");
+  };
   let placeQueries = [];
   const placeSorts = [];
   let failCities = false;
@@ -139,31 +150,18 @@ const fs = require("node:fs");
         url: "https://en.wikipedia.org/wiki/Lviv",
         match: "search",
       });
-    if (url.pathname === "/api/auth/login/")
+    if (url.pathname === "/api/auth/login/") {
+      loginCount++;
+      if (loginCount === 2) workspace = workspaceMock([serverProject], resolvePlace);
       return reply(200, { access: "expired", refresh: "refresh-one" });
+    }
     if (url.pathname === "/api/auth/token/refresh/") {
       refreshRequests += 1;
       return reply(200, { access: "fresh", refresh: "refresh-two" });
     }
     if (url.pathname === "/api/auth/logout/") return reply(200, {});
     if (req.headers().authorization !== "Bearer fresh") return reply(401, {});
-    if (url.pathname === "/api/projects/") return reply(200, [serverProject]);
-    if (
-      url.pathname === "/api/projects/77/places/" &&
-      req.method() === "POST"
-    ) {
-      assert.deepEqual(req.postDataJSON(), { place_id: "geo-1" });
-      const item = { ...place, id: 18, notes: "", visited: false };
-      serverProject.places.push(item);
-      return reply(201, item);
-    }
-    if (
-      url.pathname === "/api/projects/77/places/18/" &&
-      req.method() === "PATCH"
-    ) {
-      Object.assign(serverProject.places[0], req.postDataJSON());
-      return reply(200, serverProject.places[0]);
-    }
+    if (await workspace(route)) return;
     return reply(404, {});
   });
   try {
@@ -236,9 +234,15 @@ const fs = require("node:fs");
     assert.equal(await page.locator('#sight-sort-field').isVisible(), false);
     assert.equal(detailRequests, 1, "Category changes reuse cached details");
     await page.locator('#places-grid [data-action="save"]').click();
+    await page.locator('dialog [name="username"]').waitFor();
+    assert.equal(await page.locator('#places-grid [data-action="save"]').getAttribute('aria-pressed'), 'false');
+    await signIn();
+    await page.waitForFunction(() => document.querySelector('#places-grid [data-action="save"]').getAttribute('aria-pressed') === 'true');
+    assert.equal(await page.locator('#city-query').inputValue(), 'Lviv');
     await page.locator('[data-nav="saved"]').click();
     assert.equal(await page.locator("#saved-grid .art-card").count(), 1);
     await page.reload();
+    await page.locator("#saved-grid .art-card").waitFor();
     assert.equal(await page.locator("#saved-grid .art-card").count(), 1);
     await page
       .locator('#saved-grid [data-action="place-detail"]')
@@ -285,6 +289,7 @@ const fs = require("node:fs");
     await page.locator('dialog button[type="submit"]').click();
     assert.equal(await page.locator(".place-notes script").count(), 0);
     await page.locator("[data-visited]").check();
+    await page.waitForFunction(() => document.querySelector('[data-action="delete-trip"]').disabled);
     assert.equal(
       await page.locator('[data-action="delete-trip"]').isDisabled(),
       true,
@@ -302,8 +307,12 @@ const fs = require("node:fs");
     await page.locator("[data-visited]").uncheck();
     await page.locator('[data-action="delete-trip"]').click();
     await page.locator('dialog button[type="submit"]').click();
+    await page.locator('.trip-card').waitFor({ state: 'hidden' });
     assert.equal(await page.locator(".trip-card").count(), 0);
 
+    await page.locator("#account-button").click();
+    await page.locator('dialog button[type="submit"]').click();
+    await page.waitForFunction(() => !document.querySelector('dialog').open);
     await page.locator("#account-button").click();
     await page.keyboard.press("Escape");
     assert.equal(
@@ -317,7 +326,7 @@ const fs = require("node:fs");
     await page.locator('[name="password"]').fill("not-a-real-password");
     await page.locator('dialog button[type="submit"]').click();
     await page.locator(".trip-card").waitFor();
-    assert.equal(refreshRequests, 1);
+    assert.equal(refreshRequests, 2);
     await page.locator('[data-action="trip-detail"]').click();
     await page.getByRole("button", { name: "Add place +", exact: true }).click();
     await page.waitForURL("**/#collection");
@@ -330,6 +339,7 @@ const fs = require("node:fs");
     await page.locator('dialog [name="project_id"]').selectOption("77");
     await page.locator('dialog button[type="submit"]').click();
     await page.locator("[data-visited]").check();
+    await page.waitForFunction(() => document.querySelector('[data-action="delete-trip"]').disabled);
     assert.equal(serverProject.places[0].visited, true);
     await page.locator("#close-modal").click();
     await page.locator("#account-button").click();
@@ -380,6 +390,7 @@ const fs = require("node:fs");
       ...city, place_id: `layout-${index}`, name, categories: [category],
       latitude: city.latitude + index / 100, address: `${index + 1} Market Square, Lviv, Ukraine`, image_url,
     }));
+    layoutPlaces = examples;
     await page.route("https://upload.wikimedia.org/broken-card.png", (route) => route.abort());
     await page.route("https://upload.wikimedia.org/layout-test.jpg", (route) => route.fulfill({
       contentType: "image/jpeg", body: fs.readFileSync(path.resolve(__dirname, "../../static/travel/images/chicago.jpg")),
@@ -407,6 +418,8 @@ const fs = require("node:fs");
     assert.doesNotMatch(await page.locator("#places-grid").textContent(), /No photo|Finding a photo|Photo temporarily unavailable/);
     assert.ok((await page.locator('[data-place-id="layout-0"]').boundingBox()).height < 260);
     await page.locator('[data-place-id="layout-0"] [data-action="save"]').click();
+    await signIn();
+    await page.waitForFunction(() => document.querySelector('[data-place-id="layout-0"] [data-action="save"]').getAttribute('aria-pressed') === 'true');
     await page.locator('[data-nav="saved"]').click();
     assert.equal(await page.locator('#saved-grid [data-place-id="layout-0"] .place-illustration').count(), 1);
     await page.locator('[data-nav="discover"]').click();
@@ -462,7 +475,7 @@ const fs = require("node:fs");
     await page.locator('#close-modal').click();
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: automatic photos, missing/broken photo cards, country flags and keyboard selection, OpenStreetMap, cities, category search, Wikipedia, bookmarks, guest CRUD, notes, visited protection, JWT refresh, server integration, retry states and responsive layout.",
+      "PASS: photos, country flags, discovery, guest save/login continuation, account CRUD, bookmarks, notes, visited protection, JWT refresh, retry states and responsive layout.",
     );
   } finally {
     await browser.close();

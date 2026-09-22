@@ -13,7 +13,7 @@ class ProjectApiTests(APITestCase):
 
     def setUp(self):
         self.client.force_authenticate(self.user)
-        self.project = TravelProject.objects.create(name='Вікенд у Львові')
+        self.project = TravelProject.objects.create(name='Вікенд у Львові', owner=self.user)
         self.project_url = f'/api/projects/{self.project.pk}/'
         self.places_url = self.project_url + 'places/'
 
@@ -85,7 +85,7 @@ class ProjectApiTests(APITestCase):
 
     def test_nested_place_cannot_be_read_through_other_project(self):
         place = ProjectPlace.objects.create(project=self.project, **geo_place())
-        other = TravelProject.objects.create(name='Other')
+        other = TravelProject.objects.create(name='Other', owner=self.user)
         self.assertEqual(self.client.get(f'/api/projects/{other.pk}/places/{place.pk}/').status_code, 404)
         self.assertEqual(self.client.get('/api/projects/999999/places/').status_code, 404)
 

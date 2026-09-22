@@ -1,5 +1,6 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
+const workspaceMock = require("./workspace-mock.cjs");
 
 (async () => {
   const browser = await chromium.launch({
@@ -11,14 +12,14 @@ const assert = require("node:assert/strict");
     const errors = [];
     const queries = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.addInitScript(() => {
-      localStorage.setItem("tp-trips-v2", JSON.stringify([
+    await page.addInitScript(() => sessionStorage.setItem("tp-session-v1", JSON.stringify({ access: "test", refresh: "test" })));
+    const workspace = workspaceMock([
         "Australia", "Buenos Aires", "Madagascar", "Vilnius", "Bergen", "Somewhere new", "Oslo",
-      ].map((name, id) => ({ id: String(id), name, places: [] }))));
-    });
+      ].map((name, id) => ({ id: String(id), name, places: [] })));
     let releaseOslo;
     const osloPending = new Promise((resolve) => { releaseOslo = resolve; });
     await page.route("**/api/**", async (route) => {
+      if (await workspace(route)) return;
       const url = new URL(route.request().url());
       if (url.pathname === "/api/countries/") {
         return route.fulfill({ json: { results: [

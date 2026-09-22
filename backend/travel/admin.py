@@ -14,7 +14,8 @@ class ProjectPlaceInline(admin.TabularInline):
 
 @admin.register(TravelProject)
 class TravelProjectAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'start_date', 'created_at')
+    list_display = ('id', 'name', 'owner', 'start_date', 'created_at')
+    list_filter = ('owner',)
     search_fields = ('name', 'description')
     readonly_fields = ('archived_places',)
     inlines = (ProjectPlaceInline,)

@@ -12,10 +12,28 @@
       </h1>
     </div>
     <p class="section-intro">
-      Inspiration for future journeys.<br />Saved in this browser.
+      Inspiration for future journeys.<br />Keep your favourites in your account.
     </p>
   </div>
-  <div id="saved-grid" class="art-grid"></div>
+  <div class="workspace-note" data-workspace-note></div>
+  <div id="saved-grid" class="art-grid" aria-live="polite"></div>
+  <template id="saved-guest">
+    <div class="empty-state">
+      <span class="empty-symbol" aria-hidden="true">✳</span>
+      <h2>Keep the places you love</h2>
+      <p>Sign in to save favourite places and find them on any device. You can explore without an account.</p>
+    </div>
+  </template>
+  <template id="saved-loading">
+    <div class="loading-state" role="status">Loading your saved places…</div>
+  </template>
+  <template id="saved-error">
+    <div class="empty-state error-state">
+      <h2>Could not load your saved places</h2>
+      <p data-text="message"></p>
+      <button class="button button-dark" data-action="retry-saved">Try again</button>
+    </div>
+  </template>
   <template id="saved-empty">
     <div class="empty-state">
       <span class="empty-symbol" aria-hidden="true">✳</span>

@@ -1,7 +1,11 @@
+from django.conf import settings
 from django.db import models
 
 
 class TravelProject(models.Model):
+    # Legacy shared projects have no known owner and remain available in admin.
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                              related_name='travel_projects', null=True, blank=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     start_date = models.DateField(null=True, blank=True)
@@ -50,3 +54,18 @@ class ProjectPlace(models.Model):
 
     def __str__(self):
         return f'{self.project.name}: {self.name}'
+
+
+class SavedPlace(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_places')
+    place_id = models.CharField(max_length=512)
+    source_id = models.CharField(max_length=512)
+    details = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        constraints = [
+            models.UniqueConstraint(fields=['owner', 'place_id'], name='unique_saved_place_per_user'),
+            models.UniqueConstraint(fields=['owner', 'source_id'], name='unique_saved_source_per_user'),
+        ]

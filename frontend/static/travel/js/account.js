@@ -10,25 +10,38 @@ import {
   modalVersion,
 } from "travel/ui/modal.js";
 import { toast } from "travel/ui/feedback.js";
-import { loadProjects } from "travel/pages/trips.js";
-import { navigate } from "travel/router.js";
+import { loadSaved } from "travel/pages/saved.js";
+import { route } from "travel/router.js";
+import { events } from "travel/core/events.js";
 import { registerActions } from "travel/core/actions.js";
 import { renderAccount } from "travel/ui/workspace.js";
 
+let pendingAction = null;
+let loginMessage = "Sign in to create trips, add places and save your favourites.";
+
 export function showLogin() {
-  openModal(renderTemplate("account-login"));
+  openModal(renderTemplate("account-login", { message: loginMessage }));
   const version = modalVersion;
   bindForm(async (formData) => {
     const data = await authRequest("login/", Object.fromEntries(formData));
     if (version !== modalVersion) return;
     state.tokens = data;
+    state.sessionVersion += 1;
     state.loaded = false;
+    state.remote = [];
+    state.saved.clear();
+    state.savedLoaded = false;
     persist("tp-session-v1", data, "sessionStorage");
     renderAccount();
-    if (version === modalVersion) closeModal();
-    if (location.hash === "#trips") await loadProjects();
-    else navigate("trips");
-    toast("You’re in the shared workspace. Time to plan!");
+    const resume = pendingAction;
+    const sessionVersion = state.sessionVersion;
+    pendingAction = null;
+    closeModal();
+    route();
+    await loadSaved().catch((error) => toast(error.message));
+    if (!state.tokens || sessionVersion !== state.sessionVersion) return;
+    toast("You’re signed in. Time to plan!");
+    if (resume && !$("#modal").open) await resume();
   });
 }
 
@@ -39,7 +52,7 @@ export function showAccount() {
   bindForm(async () => {
     try {
       await logoutSession();
-      toast("You’re in the guest workspace.");
+      toast("Signed out. You can keep exploring places.");
     } catch {
       toast("Signed out on this device. The server could not be reached to revoke the session.");
     } finally {
@@ -128,6 +141,20 @@ function handleAuthLink() {
 }
 
 export function initAccount() {
+  events.addEventListener("sign-in-required", ({ detail }) => {
+    pendingAction = detail.resume;
+    loginMessage = detail.message;
+    showLogin();
+  });
+  $("#modal").addEventListener("close", () => {
+    if ($("#modal").open) return;
+    pendingAction = null;
+    loginMessage = "Sign in to create trips, add places and save your favourites.";
+  });
+  events.addEventListener("session-expired", () => {
+    closeModal();
+    renderAccount();
+  });
   $("#account-button").addEventListener("click", showAccount);
   registerActions({
     login: () => showLogin(),

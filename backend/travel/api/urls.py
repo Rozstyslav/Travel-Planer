@@ -7,6 +7,7 @@ from travel.api.views import (
     TravelProjectViewSet,
     CountryListView, CountryDetailView, CitySearchView,
     PlaceSearchView, PlaceDetailView, WikipediaSummaryView,
+    SavedPlaceListCreateView, SavedPlaceDetailView,
 )
 
 app_name = 'travel'
@@ -16,6 +17,8 @@ router = DefaultRouter()
 router.register('projects', TravelProjectViewSet, basename='project')
 
 urlpatterns = [
+    path('saved/', SavedPlaceListCreateView.as_view(), name='saved-list'),
+    path('saved/<str:place_id>/', SavedPlaceDetailView.as_view(), name='saved-detail'),
     path('countries/', CountryListView.as_view(), name='country-list'),
     path('countries/<str:code>/', CountryDetailView.as_view(), name='country-detail'),
     path('cities/', CitySearchView.as_view(), name='city-search'),

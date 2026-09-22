@@ -1,6 +1,6 @@
 # Backend
 
-Django REST Framework, JWT, SQLite and external API clients.
+Django REST Framework, JWT, PostgreSQL and external API clients.
 
 ## Layout
 
@@ -54,6 +54,13 @@ database as the test database. Migrations create the schema but do not copy data
 from SQLite.
 
 ## Accounts
+
+Discovery is public. Project and saved-place endpoints require JWT and are
+scoped to the current user, including nested project-place requests. The
+`travel.0005_personal_workspace` migration keeps legacy projects with no owner;
+they are hidden from the API until an administrator assigns an owner in Admin.
+Bookmarks are stored on the server via `GET/POST /api/saved/` and
+`DELETE /api/saved/{place_id}/`. Saving verifies place metadata with the provider.
 
 Open **Sign in → Create account** to register with username, email and password.
 New accounts must verify their email before signing in. Existing Django users

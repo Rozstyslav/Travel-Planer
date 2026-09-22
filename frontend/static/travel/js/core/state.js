@@ -1,18 +1,9 @@
-import { readArray, readStored, validPlace } from "travel/core/storage.js";
+import { readStored } from "travel/core/storage.js";
 
 export const state = {
-  saved: new Map(
-    readArray("tp-saved-v2")
-      .filter(validPlace)
-      .map((p) => [p.place_id, p]),
-  ),
-  local: readArray("tp-trips-v2").filter(
-    (p) =>
-      p &&
-      typeof p.name === "string" &&
-      Array.isArray(p.places) &&
-      p.places.every(validPlace),
-  ),
+  saved: new Map(),
+  savedLoaded: false,
+  sessionVersion: 0,
   remote: [],
   tokens: readStored("tp-session-v1", null, "sessionStorage"),
   loaded: false,
@@ -31,7 +22,7 @@ export const state = {
   countryVersion: 0,
 };
 if (!state.tokens?.access || !state.tokens?.refresh) state.tokens = null;
-export const projects = () => (state.tokens ? state.remote : state.local);
+export const projects = () => (state.tokens ? state.remote : []);
 export const project = (id) =>
   projects().find((p) => String(p.id) === String(id));
 export const isComplete = (p) =>

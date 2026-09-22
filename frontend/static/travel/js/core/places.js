@@ -1,5 +1,4 @@
 import { state } from "travel/core/state.js";
-import { persist } from "travel/core/storage.js";
 import { discovery } from "travel/core/api.js";
 import { events } from "travel/core/events.js";
 
@@ -70,7 +69,6 @@ export async function fetchPlaceDetails(id) {
   state.details.set(id, p);
   if (state.saved.has(id)) {
     state.saved.set(id, p);
-    persist("tp-saved-v2", [...state.saved.values()]);
     events.dispatchEvent(new Event("saved-changed"));
   }
   return p;

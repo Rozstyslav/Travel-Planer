@@ -7,7 +7,7 @@ import {
   isComplete,
   findPlace,
 } from "travel/core/state.js";
-import { persist } from "travel/core/storage.js";
+import { requireSignIn } from "travel/core/auth.js";
 import { api, discovery } from "travel/core/api.js";
 import { detailedPlace } from "travel/core/places.js";
 import { tripCover, cityCover } from "travel/core/trip-cover.js";
@@ -74,12 +74,6 @@ function refreshTripCovers() {
 export function cancelProjectLoad() {
   loadVersion += 1;
 }
-const localPlace = (p) => ({
-  ...p,
-  id: crypto.randomUUID(),
-  notes: "",
-  visited: false,
-});
 export function formatDate(value) {
   if (!value) return "Date to be decided";
   const date = new Date(`${value}T12:00:00`);
@@ -94,6 +88,12 @@ export function formatDate(value) {
 
 export function renderTrips() {
   renderAccount();
+  $(".trips-toolbar").hidden = !state.tokens;
+  if (!state.tokens) {
+    $("#trip-total").textContent = "";
+    $("#trips-grid").innerHTML = renderTemplate("trips-guest");
+    return;
+  }
   const all = projects();
   const list = all.filter(
     (p) =>
@@ -144,25 +144,21 @@ export async function loadProjects() {
   }
 }
 
-export function saveLocal() {
-  persist("tp-trips-v2", state.local);
-}
-
 export function upsertProject(p) {
+  if (!state.tokens) return;
   const list = projects();
   const index = list.findIndex((item) => String(item.id) === String(p.id));
   if (index < 0) list.unshift(p);
   else list[index] = p;
-  if (!state.tokens) saveLocal();
   renderTrips();
 }
 
 export function showProjectForm(id = null, selectedPlace = null) {
+  if (!requireSignIn(() => showProjectForm(id, selectedPlace), "Sign in to create and manage your own trips.")) return;
   const p = id ? project(id) : null;
   openModal(
     renderTemplate("trip-form", {
       editing: Boolean(p),
-      signedIn: Boolean(state.tokens),
       id: p?.id,
       name: p?.name || "",
       startDate: p?.start_date || "",
@@ -180,23 +176,11 @@ export function showProjectForm(id = null, selectedPlace = null) {
       start_date: data.get("start_date") || null,
       description: data.get("description").trim(),
     };
-    let result;
-    if (state.tokens) {
-      if (!p)
-        payload.places = selectedPlace ? [{ place_id: selectedPlace }] : [];
-      result = await api(p ? `projects/${p.id}/` : "projects/", {
-        method: p ? "PATCH" : "POST",
-        body: JSON.stringify(payload),
-      });
-    } else
-      result = {
-        ...p,
-        ...payload,
-        id: p?.id || crypto.randomUUID(),
-        places:
-          p?.places ||
-          (selectedPlace ? [localPlace(findPlace(selectedPlace))] : []),
-      };
+    if (!p) payload.places = selectedPlace ? [{ place_id: selectedPlace }] : [];
+    const result = await api(p ? `projects/${p.id}/` : "projects/", {
+      method: p ? "PATCH" : "POST",
+      body: JSON.stringify(payload),
+    });
     upsertProject(result);
     navigate("trips");
     if (version === modalVersion) showTrip(result.id);
@@ -205,6 +189,7 @@ export function showProjectForm(id = null, selectedPlace = null) {
 }
 
 export function showNotes(projectId, placeId) {
+  if (!requireSignIn(() => loadProjects(), "Sign in to edit your trip notes.")) return;
   const p = project(projectId);
   const place = p.places.find((item) => String(item.id) === String(placeId));
   openModal(
@@ -216,11 +201,10 @@ export function showNotes(projectId, placeId) {
   );
   bindForm(async (data) => {
     const patch = { notes: data.get("notes").trim() };
-    if (state.tokens)
-      await api(`projects/${p.id}/places/${place.id}/`, {
-        method: "PATCH",
-        body: JSON.stringify(patch),
-      });
+    await api(`projects/${p.id}/places/${place.id}/`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
     Object.assign(place, patch);
     upsertProject(p);
     showTrip(p.id);
@@ -229,6 +213,7 @@ export function showNotes(projectId, placeId) {
 }
 
 export function confirmDelete(id) {
+  if (!requireSignIn(() => loadProjects(), "Sign in to manage your trips.")) return;
   const p = project(id);
   if (p.places.some((place) => place.visited)) {
     toast("A trip with visited places cannot be deleted.");
@@ -236,13 +221,8 @@ export function confirmDelete(id) {
   }
   openModal(renderTemplate("trip-delete-form", { id, name: p.name }));
   bindForm(async () => {
-    if (state.tokens) {
-      await api(`projects/${p.id}/`, { method: "DELETE" });
-      state.remote = state.remote.filter((item) => item.id !== p.id);
-    } else {
-      state.local = state.local.filter((item) => item.id !== p.id);
-      saveLocal();
-    }
+    await api(`projects/${p.id}/`, { method: "DELETE" });
+    state.remote = state.remote.filter((item) => item.id !== p.id);
     renderTrips();
     closeModal();
     toast("Trip deleted. New adventures await.");
@@ -250,11 +230,14 @@ export function confirmDelete(id) {
 }
 
 export async function showAddPlace(id) {
+  if (!requireSignIn(() => showAddPlace(id), "Sign in to add this place to a trip.")) return;
+  const sessionVersion = state.sessionVersion;
   openModal(renderTemplate("trip-add-place-loading"));
   const version = modalVersion;
   try {
     const place = await detailedPlace(id);
-    if (state.tokens && !state.loaded) {
+    if (!state.tokens || sessionVersion !== state.sessionVersion || version !== modalVersion) return;
+    if (!state.loaded) {
       const data = await api("projects/");
       state.remote = Array.isArray(data) ? data : data.results;
       state.loaded = true;
@@ -297,28 +280,31 @@ export async function showAddPlace(id) {
 }
 
 export async function addPlace(projectId, id) {
+  if (!requireSignIn(() => showAddPlace(id), "Sign in to add this place to a trip.")) return;
+  const sessionVersion = state.sessionVersion;
   const p = project(projectId);
   if (!p) throw new Error("Trip not found.");
   if (p.places.length >= 10) throw new Error("A trip can have up to 10 stops.");
   const detail = await detailedPlace(id);
+  if (!state.tokens || sessionVersion !== state.sessionVersion)
+    throw new Error("Your session has changed. Please try again.");
   if (
     p.places.some(
       (item) => item.place_id === id || item.source_id === detail.source_id,
     )
   )
     throw new Error("This place is already in the trip.");
-  const place = state.tokens
-    ? await api(`projects/${p.id}/places/`, {
-        method: "POST",
-        body: JSON.stringify({ place_id: id }),
-      })
-    : localPlace(detail);
+  const place = await api(`projects/${p.id}/places/`, {
+    method: "POST",
+    body: JSON.stringify({ place_id: id }),
+  });
   p.places.push(place);
   upsertProject(p);
   toast("Stop added to your trip.");
 }
 
 export function showTrip(id) {
+  if (!requireSignIn(() => loadProjects(), "Sign in to view your trips.")) return;
   const p = project(id);
   if (!p) {
     toast("Trip not found.");
@@ -383,6 +369,7 @@ export function initTrips() {
   document.addEventListener("change", async (event) => {
     const input = event.target.closest("[data-visited]");
     if (!input) return;
+    if (!requireSignIn(() => loadProjects(), "Sign in to update your trips.")) return;
     const p = project(input.dataset.project);
     const place = p.places.find(
       (item) => String(item.id) === input.dataset.visited,
@@ -391,11 +378,10 @@ export function initTrips() {
     const version = modalVersion;
     input.disabled = true;
     try {
-      if (state.tokens)
-        await api(`projects/${p.id}/places/${place.id}/`, {
-          method: "PATCH",
-          body: JSON.stringify({ visited: checked }),
-        });
+      await api(`projects/${p.id}/places/${place.id}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ visited: checked }),
+      });
       place.visited = checked;
       upsertProject(p);
       if (version === modalVersion) {

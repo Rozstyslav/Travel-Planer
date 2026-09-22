@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
@@ -17,7 +17,7 @@ from travel.exceptions import (
     CountryNotFoundError, PlaceNotFoundError, ProviderError, ProviderConfigurationError,
     DuplicateProjectPlaceError, ProjectHasVisitedPlacesError, ProjectPlaceLimitError,
 )
-from travel.models import ProjectPlace, TravelProject
+from travel.models import ProjectPlace, SavedPlace, TravelProject
 from travel.place_identity import unique_places
 from travel.services import add_place_to_project, delete_project, get_place_details
 
@@ -99,7 +99,14 @@ class WikipediaSummaryView(DiscoveryView):
 
 
 class TravelProjectViewSet(ProviderErrorsMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = TravelProject.objects.prefetch_related('places').all()
+
+    def get_queryset(self):
+        return super().get_queryset().filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -114,15 +121,17 @@ class TravelProjectViewSet(ProviderErrorsMixin, viewsets.ModelViewSet):
 
 
 class ProjectPlaceListCreateView(ProviderErrorsMixin, generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
-        project = get_object_or_404(TravelProject, pk=self.kwargs['project_id'])
+        project = get_object_or_404(TravelProject, pk=self.kwargs['project_id'], owner=self.request.user)
         return project.places.all()
 
     def get_serializer_class(self):
         return PlaceInputSerializer if self.request.method == 'POST' else ProjectPlaceReadSerializer
 
     def create(self, request, *args, **kwargs):
-        project = get_object_or_404(TravelProject, pk=self.kwargs['project_id'])
+        project = get_object_or_404(TravelProject, pk=self.kwargs['project_id'], owner=request.user)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         place = add_place_to_project(project=project, **serializer.validated_data)
@@ -130,8 +139,37 @@ class ProjectPlaceListCreateView(ProviderErrorsMixin, generics.ListCreateAPIView
 
 
 class ProjectPlaceDetailView(ProviderErrorsMixin, generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
-        return ProjectPlace.objects.filter(project_id=self.kwargs['project_id']).select_related('project')
+        return ProjectPlace.objects.filter(project_id=self.kwargs['project_id'],
+                                           project__owner=self.request.user).select_related('project')
 
     def get_serializer_class(self):
         return ProjectPlaceReadSerializer if self.request.method == 'GET' else ProjectPlaceUpdateSerializer
+
+
+class SavedPlaceListCreateView(ProviderErrorsMixin, APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response([place.details for place in SavedPlace.objects.filter(owner=request.user)])
+
+    def post(self, request):
+        serializer = PlaceInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        details = get_place_details(serializer.validated_data['place_id'])
+        # Aliases of the same provider record are one bookmark. Repeated saves are idempotent.
+        saved, created = SavedPlace.objects.get_or_create(
+            owner=request.user, source_id=details['source_id'],
+            defaults={'place_id': details['place_id'], 'details': details},
+        )
+        return Response(saved.details, status=201 if created else 200)
+
+
+class SavedPlaceDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, place_id):
+        SavedPlace.objects.filter(owner=request.user, place_id=place_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,9 +1,6 @@
 <template id="account-login">
   <h2 id="modal-title">Welcome back.</h2>
-  <p class="modal-description">
-    Sign in to manage trips in the shared workspace. Your guest trips will stay
-    in this browser.
-  </p>
+  <p class="modal-description" data-text="message"></p>
   <form>
     <label class="form-field"
       >Username or email<input
@@ -36,7 +33,7 @@
 
 <template id="account-register">
   <h2 id="modal-title">Start your next adventure.</h2>
-  <p class="modal-description">Create an account, then confirm your email to sign in.</p>
+  <p class="modal-description">Save favourite places and build your own trips. Create an account, then confirm your email to sign in.</p>
   <form>
     <label class="form-field">Username<input name="username" autocomplete="username" maxlength="150" required autofocus /></label>
     <label class="form-field">Email<input name="email" type="email" autocomplete="email" maxlength="254" required /></label>
@@ -86,8 +83,8 @@
 <template id="account-details">
   <h2 id="modal-title">Your travel workspace.</h2>
   <p class="modal-description">
-    You’re using the shared workspace. Trips are saved on the server. Bookmarks
-    and guest trips stay in this browser.
+    Your trips and saved places belong to your account and are available when
+    you sign in on another device.
   </p>
   <form>
     <div class="form-actions">

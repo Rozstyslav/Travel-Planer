@@ -71,6 +71,15 @@ Page modules register their actions and routes during initialization. Services
 announce saved-data/session changes through `core/events.js`; they do not import
 page modules. This keeps module dependencies free of circular imports.
 
+Guests can search and view places. Trips and Saved show sign-in invitations for
+guests. Create/add/save actions use `core/auth.js` to request login and resume
+the selected action after success; closing the dialog cancels that intent.
+Signing in keeps the current page and search. Trips and bookmarks are stored in
+the account through authenticated `/api/projects/` and `/api/saved/` requests.
+Legacy guest localStorage data is left untouched and is no longer loaded.
+Logout/expiry clears personal data and closes account-only dialogs. Session
+versions prevent late responses from repopulating another account's workspace.
+
 Trip covers use `static/travel/js/core/trip-cover.js`: local associations,
 country names localized with `Intl.DisplayNames`, capitals from the countries
 catalog, and the trip's places. Countries without a custom emoji use a compass
@@ -129,7 +138,7 @@ npm test
 Playwright uses an isolated browser context and mocked API responses. It does not create real server records.
 `npm run check` checks every JavaScript file. The browser suite covers module
 cache invalidation, template text/form escaping, empty states, direct navigation,
-discovery, guest/server trips and authentication.
+discovery, guest access gates, personal trips/bookmarks and authentication.
 Screenshots are written to `docs/previews/` at the repository root; set
 `SCREENSHOT_DIR` to put test captures elsewhere.
 Set `BASE_URL` to test another local server, or `BROWSER_CHANNEL` to use another installed Playwright-compatible browser channel.
