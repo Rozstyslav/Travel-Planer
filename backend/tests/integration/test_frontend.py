@@ -2,10 +2,14 @@ from django.contrib.staticfiles import finders
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
 
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
 class FrontendTests(SimpleTestCase):
     def test_home_is_public_and_renders_the_planner(self):
         response = self.client.get(reverse("home"))
@@ -26,12 +30,12 @@ class FrontendTests(SimpleTestCase):
             with self.subTest(asset=asset):
                 self.assertIsNotNone(finders.find(f"travel/{asset}"))
 
-    def test_home_refreshes_assets_when_css_or_javascript_changes(self):
+    def test_home_refreshes_assets_when_css_javascript_or_favicon_changes(self):
         with TemporaryDirectory() as directory:
             frontend = Path(directory)
             assets = frontend / "static" / "travel"
             assets.mkdir(parents=True)
-            names = ("app.css", "app.js", "js/pages/trips.js")
+            names = ("app.css", "app.js", "favicon.svg", "js/pages/trips.js")
             for name in names:
                 (assets / name).parent.mkdir(parents=True, exist_ok=True)
                 (assets / name).write_text("original", encoding="utf-8")
@@ -47,6 +51,7 @@ class FrontendTests(SimpleTestCase):
                     self.assertNotEqual(next_version, version)
                     self.assertContains(response, f'/static/travel/app.css?v={next_version}')
                     self.assertContains(response, f'/static/travel/app.js?v={next_version}')
+                    self.assertContains(response, f'/static/travel/favicon.svg?v={next_version}')
                     imports = json.loads(response.context['frontend_importmap'])['imports']
                     self.assertEqual(imports['travel/pages/trips.js'],
                                      f'/static/travel/js/pages/trips.js?v={next_version}')

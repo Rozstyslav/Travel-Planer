@@ -15,7 +15,7 @@ def home(request):
     revision = sha256()
     assets = settings.FRONTEND_DIR / "static" / "travel"
     modules = sorted((assets / "js").rglob("*.js"))
-    for path in [assets / "app.css", assets / "app.js", *modules]:
+    for path in [assets / "app.css", assets / "app.js", assets / "favicon.svg", *modules]:
         revision.update(path.relative_to(assets).as_posix().encode())
         revision.update(path.read_bytes())
     version = revision.hexdigest()[:16]
