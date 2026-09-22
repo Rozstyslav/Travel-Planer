@@ -96,9 +96,26 @@ const assert = require("node:assert/strict");
       await page.locator("#saved-grid").innerText(),
       /Save your first place/,
     );
+    // The optional header counter must not prevent application startup/routing.
+    await page.route(`${base}/`, async (route) => {
+      const response = await route.fetch();
+      const html = (await response.text()).replace(
+        /<span\b[^>]*\bid="saved-count"[^>]*>[\s\S]*?<\/span>/,
+        "",
+      );
+      await route.fulfill({ response, body: html });
+    });
+    await page.reload();
+    assert.equal(await page.locator("#saved-count").count(), 0);
+    for (const view of ["trips", "discover", "saved"]) {
+      await page.locator(`[data-nav="${view}"]`).click();
+      await page.locator(`#${view}-view`).waitFor({ state: "visible" });
+      assert.equal(await page.locator(".view:visible").count(), 1);
+    }
+    await page.locator("#saved-grid .empty-state").waitFor();
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: navigation, empty states, trip filters, safe template bindings and deletion with archived visits.",
+      "PASS: navigation with/without the saved counter, empty states, trip filters, safe template bindings and deletion with archived visits.",
     );
   } finally {
     await browser.close();

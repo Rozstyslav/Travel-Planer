@@ -16,7 +16,8 @@ export function renderSaved() {
   $$("#saved-grid .art-card").forEach((element) =>
     photoObserver.unobserve(element),
   );
-  $("#saved-count").textContent = state.saved.size;
+  const savedCount = $("#saved-count");
+  if (savedCount) savedCount.textContent = state.saved.size;
   $("#saved-grid").innerHTML = state.saved.size
     ? [...state.saved.values()].map(card).join("")
     : renderTemplate("saved-empty");
