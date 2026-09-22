@@ -1761,18 +1761,6 @@ body.modal-open {
   box-shadow: 0 5px 30px #13241333;
   z-index: 5;
 }
-.skip-link {
-  position: fixed;
-  left: 16px;
-  top: -70px;
-  z-index: 10;
-  background: var(--ink);
-  color: white;
-  padding: 12px 20px;
-}
-.skip-link:focus {
-  top: 12px;
-}
 .noscript-note {
   position: fixed;
   bottom: 0;

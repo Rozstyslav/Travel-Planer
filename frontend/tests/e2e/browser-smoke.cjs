@@ -17,8 +17,6 @@ const fs = require("node:fs");
   page.on("pageerror", (e) => errors.push(e.message));
   const base = process.env.BASE_URL || "http://127.0.0.1:8000";
   const output = process.env.SCREENSHOT_DIR || path.resolve(__dirname, "../../../docs/previews");
-  // Full-page captures can include fixed elements positioned above the viewport.
-  const screenshotStyle = ".skip-link:not(:focus) { visibility: hidden; }";
   fs.mkdirSync(output, { recursive: true });
   const city = {
     place_id: "city-1",
@@ -362,13 +360,11 @@ const fs = require("node:fs");
       if (width === 390)
         await page.screenshot({
           path: path.join(output, "mobile.png"),
-          style: screenshotStyle,
           fullPage: true,
         });
       if (width === 1440)
         await page.screenshot({
           path: path.join(output, "desktop.png"),
-          style: screenshotStyle,
           fullPage: true,
         });
     }
@@ -419,7 +415,7 @@ const fs = require("node:fs");
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Mixed cards overflow at ${width}`);
       if (width === 390 || width === 1440) {
         await page.locator("#places-grid").screenshot({
-          path: path.join(output, `place-cards-${width}.png`), style: screenshotStyle,
+          path: path.join(output, `place-cards-${width}.png`),
         });
       }
     }
