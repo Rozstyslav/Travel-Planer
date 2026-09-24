@@ -12,7 +12,7 @@ from django.utils.crypto import constant_time_compare
 from django.template.loader import render_to_string
 
 from .models import AccountProfile
-from .resend import EmailDeliveryError
+from .mailersend import EmailDeliveryError
 
 logger = logging.getLogger(__name__)
 

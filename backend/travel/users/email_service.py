@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-from .resend import EmailDeliveryError
+from .mailersend import EmailDeliveryError
 
 logger = logging.getLogger(__name__)
 

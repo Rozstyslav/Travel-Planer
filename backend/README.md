@@ -96,24 +96,24 @@ Registration cooldowns live in the running server's cache, independently of the
 database; wait for them to expire or restart the local development server after
 resetting test data.
 
-Verification and password-reset emails use **Resend**, through
-`travel/users/resend.py`. There is no console/SMTP fallback, hardcoded recipient,
+Verification and password-reset emails use **MailerSend**, through
+`travel/users/mailersend.py`. There is no console/SMTP fallback, hardcoded recipient,
 fixed confirmation code, or email sent at module import time.
-Set `RESEND_API_KEY`, `RESEND_FROM_EMAIL` and `APP_BASE_URL` in `backend/.env`,
+Set `MAILERSEND_API_KEY`, `MAILERSEND_FROM_EMAIL` and `APP_BASE_URL` in `backend/.env`,
 then restart Django. See `.env.example`.
 
-`onboarding@resend.dev` is a test sender restricted to the email address associated
-with your Resend account. To deliver to other users, verify a domain in Resend and
-set `RESEND_FROM_EMAIL` to an address on that domain, for example
-`Travel Planner <verify@your-domain.com>`.
-See [Resend's domain restriction](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain).
+Set `MAILERSEND_FROM_EMAIL` to an address on a domain verified in MailerSend,
+for example `Travel Planner <verify@your-domain.com>`. For initial testing,
+you can use your account's assigned trial domain, subject to its sending limits.
+There is no default sender address; an API key alone is not enough.
+See [MailerSend's sending guide](https://www.mailersend.com/help/how-to-start-sending-emails).
 
-Signup/resend waits for Resend to accept the email. A missing key, provider error
+Signup/resend waits for MailerSend to accept the email. A missing key or sender, provider error
 or response without a message ID returns HTTP 503 (`email_delivery_failed`);
 the account stays inactive and can retry. A failed resend preserves the previous
-verification link. Acceptance by Resend does not guarantee inbox delivery;
-delivery/bounce details are available in the Resend dashboard. Tests use an
-in-memory outbox or a mocked Resend SDK and never send to real mailboxes.
+verification link. Acceptance by MailerSend does not guarantee inbox delivery;
+delivery/bounce details are available in the MailerSend dashboard. Tests use an
+in-memory outbox or a mocked MailerSend HTTP transport and never send to real mailboxes.
 Verification links expire after 24 hours; reset links after one hour. Both become
 unusable after successful use. Resending verification replaces the previous link.
 For browser tests, see [frontend/README.md](../frontend/README.md).

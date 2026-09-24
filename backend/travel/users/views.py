@@ -17,7 +17,7 @@ from .serializers import (
 )
 from .services import send_verification_email, verify_email_token, is_resend_verification_throttled
 from .tokens import password_reset_token_generator
-from .resend import EmailDeliveryError
+from .mailersend import EmailDeliveryError
 
 User = get_user_model()
 EMAIL_MESSAGE = {"detail": "If the email address is eligible, a verification email has been sent."}

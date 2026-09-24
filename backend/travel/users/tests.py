@@ -1,16 +1,18 @@
 from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
+from requests import Response
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
-from django.test import override_settings
+from django.test import SimpleTestCase, override_settings
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import AccountProfile, PasswordResetAttempt, PasswordResetConfirmation
+from .mailersend import EmailDeliveryError
 from .services import build_email_verification_token
 from .tokens import password_reset_token_generator
 
@@ -225,15 +227,19 @@ class AccountFlowTests(APITestCase):
 
 
 @override_settings(
-    EMAIL_BACKEND="travel.users.resend.ResendEmailBackend",
-    RESEND_API_KEY="re-test-only",
+    EMAIL_BACKEND="travel.users.mailersend.MailerSendEmailBackend",
+    MAILERSEND_API_KEY="mlsn-test-only",
     DEFAULT_FROM_EMAIL="Travel Planner <verify@example.com>",
     PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"],
 )
-class ResendDeliveryTests(APITestCase):
+class MailerSendDeliveryTests(APITestCase):
     def setUp(self):
         cache.clear()
-        self.sender = patch("travel.users.resend.resend_sdk.Emails.send", return_value={"id": "email-123"}).start()
+        response = Response()
+        response.status_code = 202
+        response.headers["x-message-id"] = "email-123"
+        response._content = b""
+        self.sender = patch("mailersend.client.requests.Session.request", return_value=response).start()
         self.addCleanup(patch.stopall)
         self.payload = {"username": "traveller", "email": "traveller@example.com", "password": "Strong-New!8234"}
 
@@ -241,14 +247,16 @@ class ResendDeliveryTests(APITestCase):
         return self.client.post("/api/auth/register/", self.payload, format="json")
 
     def sent_token(self):
-        link = self.sender.call_args.args[0]["text"].splitlines()[1]
+        link = self.sender.call_args.kwargs["json"]["text"].splitlines()[1]
         return parse_qs(urlsplit(link).fragment.split("?", 1)[1])["token"][0]
 
     def test_signup_sends_real_unique_link_to_registered_address(self):
         self.assertEqual(self.register().status_code, 201)
-        params = self.sender.call_args.args[0]
-        self.assertEqual(params["from"], "Travel Planner <verify@example.com>")
-        self.assertEqual(params["to"], [self.payload["email"]])
+        params = self.sender.call_args.kwargs["json"]
+        self.assertEqual(self.sender.call_args.kwargs["url"], "https://api.mailersend.com/v1/email")
+        self.assertEqual(self.sender.call_args.kwargs["timeout"], 12)
+        self.assertEqual(params["from"], {"name": "Travel Planner", "email": "verify@example.com"})
+        self.assertEqual(params["to"], [{"email": self.payload["email"]}])
         self.assertIn("Confirm my email", params["html"])
         self.assertNotIn("123456", params["text"])
         user = User.objects.get(username="traveller")
@@ -259,7 +267,7 @@ class ResendDeliveryTests(APITestCase):
         user.refresh_from_db()
         self.assertTrue(user.is_active)
 
-    @override_settings(RESEND_API_KEY="")
+    @override_settings(MAILERSEND_API_KEY="")
     def test_missing_key_returns_error_without_console_fallback(self):
         response = self.register()
         self.assertEqual(response.status_code, 503)
@@ -298,16 +306,33 @@ class ResendDeliveryTests(APITestCase):
         self.assertEqual(self.client.post("/api/auth/verify-email/", {"token": token}).status_code, 400)
 
     def test_missing_provider_message_id_is_not_success(self):
-        self.sender.return_value = {}
+        self.sender.return_value.headers.clear()
         self.assertEqual(self.register().status_code, 503)
 
-    def test_password_reset_uses_resend_and_reports_failures(self):
+    @override_settings(DEFAULT_FROM_EMAIL="")
+    def test_missing_sender_does_not_call_provider(self):
+        self.assertEqual(self.register().status_code, 503)
+        self.sender.assert_not_called()
+
+    def test_provider_http_errors_are_reported_without_private_details(self):
+        for status in (401, 422, 429, 500):
+            with self.subTest(status=status):
+                cache.clear()
+                self.sender.return_value.status_code = status
+                self.sender.return_value._content = b'{"message": "secret provider detail"}'
+                with self.assertLogs("travel.users.mailersend", level="WARNING") as logs:
+                    response = self.register()
+                self.assertEqual(response.status_code, 503)
+                self.assertNotIn("secret provider detail", str(response.data))
+                self.assertNotIn("secret provider detail", str(logs.output))
+
+    def test_password_reset_uses_mailersend_and_reports_failures(self):
         User.objects.create_user("existing", "existing@example.com", self.payload["password"])
         response = self.client.post("/api/auth/password-reset/", {"email": "existing@example.com"})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.sender.call_args.args[0]["to"], ["existing@example.com"])
-        self.assertIn("#reset-password?", self.sender.call_args.args[0]["text"])
-        self.sender.side_effect = RuntimeError("Resend unavailable")
+        self.assertEqual(self.sender.call_args.kwargs["json"]["to"], [{"email": "existing@example.com"}])
+        self.assertIn("#reset-password?", self.sender.call_args.kwargs["json"]["text"])
+        self.sender.side_effect = RuntimeError("MailerSend unavailable")
         response = self.client.post("/api/auth/password-reset/", {"email": "existing@example.com"})
         self.assertEqual(response.status_code, 503)
         self.assertFalse(PasswordResetAttempt.objects.last().token_sent)
@@ -315,4 +340,65 @@ class ResendDeliveryTests(APITestCase):
     def test_unknown_recipient_does_not_trigger_test_email(self):
         response = self.client.post("/api/auth/resend-verification/", {"email": "unknown@example.com"})
         self.assertEqual(response.status_code, 200)
+        self.sender.assert_not_called()
+
+
+@override_settings(
+    EMAIL_BACKEND="travel.users.mailersend.MailerSendEmailBackend",
+    MAILERSEND_API_KEY="mlsn-test-only",
+    DEFAULT_FROM_EMAIL="Travel Planner <verify@example.com>",
+)
+class MailerSendBackendTests(SimpleTestCase):
+    def setUp(self):
+        response = Response()
+        response.status_code = 202
+        response.headers["x-message-id"] = "email-123"
+        response._content = b""
+        transport = patch("mailersend.client.requests.Session.request", return_value=response)
+        self.sender = transport.start()
+        self.addCleanup(transport.stop)
+
+    def test_html_and_named_recipients_are_preserved(self):
+        message = mail.EmailMessage(
+            "Subject", "<p>Hello</p>", to=["Traveller <traveller@example.com>"],
+            cc=["Copy <copy@example.com>"], bcc=["hidden@example.com"],
+            reply_to=["Support <support@example.com>"],
+        )
+        message.content_subtype = "html"
+        self.assertEqual(message.send(), 1)
+        payload = self.sender.call_args.kwargs["json"]
+        self.assertEqual(payload["html"], "<p>Hello</p>")
+        self.assertNotIn("text", payload)
+        self.assertEqual(payload["to"], [{"name": "Traveller", "email": "traveller@example.com"}])
+        self.assertEqual(payload["cc"], [{"name": "Copy", "email": "copy@example.com"}])
+        self.assertEqual(payload["bcc"], [{"email": "hidden@example.com"}])
+        self.assertEqual(payload["reply_to"], {"name": "Support", "email": "support@example.com"})
+
+    def test_empty_messages_and_recipients_do_not_call_provider(self):
+        connection = mail.get_connection()
+        self.assertEqual(connection.send_messages([]), 0)
+        self.assertEqual(connection.send_messages([mail.EmailMessage("Subject", "Body")]), 0)
+        self.sender.assert_not_called()
+
+    def test_silent_failure_counts_only_accepted_messages(self):
+        accepted = self.sender.return_value
+        self.sender.side_effect = [TimeoutError("timeout"), accepted]
+        messages = [mail.EmailMessage("Subject", "Body", to=["user@example.com"]) for _ in range(2)]
+        self.assertEqual(mail.get_connection(fail_silently=True).send_messages(messages), 1)
+
+    @override_settings(MAILERSEND_API_KEY="")
+    def test_missing_key_respects_fail_silently(self):
+        message = mail.EmailMessage("Subject", "Body", to=["user@example.com"])
+        self.assertEqual(message.send(fail_silently=True), 0)
+        with self.assertRaises(EmailDeliveryError):
+            mail.get_connection(fail_silently=False).send_messages([message])
+        self.sender.assert_not_called()
+
+    def test_multiple_reply_to_addresses_are_not_silently_dropped(self):
+        message = mail.EmailMessage(
+            "Subject", "Body", to=["user@example.com"],
+            reply_to=["one@example.com", "two@example.com"],
+        )
+        with self.assertRaises(EmailDeliveryError):
+            message.send()
         self.sender.assert_not_called()

@@ -161,11 +161,11 @@ REST_FRAMEWORK = {
 # Password validation
 AUTHENTICATION_BACKENDS = ['travel.users.auth_backend.EmailBackend']
 APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')
-EMAIL_BACKEND = 'travel.users.resend.ResendEmailBackend'
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '').strip()
-RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'Travel Planner <onboarding@resend.dev>')
-RESEND_TIMEOUT = 12
-DEFAULT_FROM_EMAIL = RESEND_FROM_EMAIL
+EMAIL_BACKEND = 'travel.users.mailersend.MailerSendEmailBackend'
+MAILERSEND_API_KEY = os.environ.get('MAILERSEND_API_KEY', '').strip()
+MAILERSEND_FROM_EMAIL = os.environ.get('MAILERSEND_FROM_EMAIL', '').strip()
+MAILERSEND_TIMEOUT = 12
+DEFAULT_FROM_EMAIL = MAILERSEND_FROM_EMAIL
 PASSWORD_RESET_TIMEOUT = 3600
 
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
