@@ -138,7 +138,7 @@ class ProjectPlaceListCreateView(ProviderErrorsMixin, generics.ListCreateAPIView
         return Response(ProjectPlaceReadSerializer(place).data, status=201)
 
 
-class ProjectPlaceDetailView(ProviderErrorsMixin, generics.RetrieveUpdateAPIView):
+class ProjectPlaceDetailView(ProviderErrorsMixin, generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

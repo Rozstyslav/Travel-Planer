@@ -80,6 +80,28 @@
   </form>
 </template>
 
+<template id="trip-remove-place-form">
+  <h2 id="modal-title">Remove this place?</h2>
+  <p class="modal-description">
+    “<span data-text="name"></span>” will be removed from
+    “<span data-text="tripName"></span>”, including its note and visited status.
+  </p>
+  <form>
+    <div class="form-actions">
+      <button
+        type="button"
+        class="button button-outline"
+        data-action="trip-detail"
+        data-bind-data-id="id"
+        autofocus
+      >
+        Keep place
+      </button>
+      <button type="submit" class="button button-danger">Remove place</button>
+    </div>
+  </form>
+</template>
+
 <template id="trip-delete-form">
   <h2 id="modal-title">Delete this trip?</h2>
   <p class="modal-description">

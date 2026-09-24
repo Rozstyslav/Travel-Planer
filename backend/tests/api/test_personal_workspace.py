@@ -27,6 +27,7 @@ class PersonalWorkspaceTests(APITestCase):
             ('get', f'{places}{self.place.pk}/', None),
             ('patch', f'{places}{self.place.pk}/', {'visited': True}),
             ('put', f'{places}{self.place.pk}/', {'notes': 'Guest'}),
+            ('delete', f'{places}{self.place.pk}/', None),
             ('get', '/api/saved/', None), ('post', '/api/saved/', {'place_id': 'geo-1'}),
             ('delete', '/api/saved/geo-1/', None),
         ]:
@@ -51,6 +52,7 @@ class PersonalWorkspaceTests(APITestCase):
                 ('post', url + 'places/', {'place_id': 'geo-2'}),
                 ('get', f'{url}places/{self.place.pk}/', None),
                 ('patch', f'{url}places/{self.place.pk}/', {'visited': True}),
+                ('delete', f'{url}places/{self.place.pk}/', None),
             ]:
                 with self.subTest(method=method, path=path):
                     self.assertEqual(getattr(self.client, method)(path, data, format='json').status_code, 404)

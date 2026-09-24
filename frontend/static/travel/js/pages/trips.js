@@ -212,6 +212,34 @@ export function showNotes(projectId, placeId) {
   });
 }
 
+export function confirmRemovePlace(projectId, placeId) {
+  if (!requireSignIn(() => loadProjects(), "Sign in to manage your trips.")) return;
+  const p = project(projectId);
+  const place = p?.places.find((item) => String(item.id) === String(placeId));
+  if (!place) {
+    toast("Place not found in this trip.");
+    return;
+  }
+  openModal(renderTemplate("trip-remove-place-form", {
+    id: p.id,
+    name: place.name,
+    tripName: p.name,
+  }));
+  const version = modalVersion;
+  bindForm(async () => {
+    await api(`projects/${p.id}/places/${place.id}/`, { method: "DELETE" });
+    const current = project(p.id);
+    if (current) {
+      current.places = current.places.filter((item) => String(item.id) !== String(place.id));
+      upsertProject(current);
+      if (version === modalVersion) showTrip(current.id);
+    } else if (version === modalVersion) {
+      closeModal();
+    }
+    toast("Place removed from your trip.");
+  });
+}
+
 export function confirmDelete(id) {
   if (!requireSignIn(() => loadProjects(), "Sign in to manage your trips.")) return;
   const p = project(id);
@@ -362,6 +390,7 @@ export function initTrips() {
     "edit-trip": ({ id }) => showProjectForm(id),
     "trip-detail": ({ id }) => showTrip(id),
     "edit-notes": ({ id, project }) => showNotes(project, id),
+    "remove-place": ({ id, project }) => confirmRemovePlace(project, id),
     "delete-trip": ({ id }) => confirmDelete(id),
     "retry-trips": () => loadProjects(),
     "add-place": ({ id }) => showAddPlace(id),

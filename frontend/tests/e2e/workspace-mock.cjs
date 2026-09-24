@@ -42,6 +42,11 @@ module.exports = function workspaceMock(initial = [], resolvePlace = (id) => ({ 
         return reply(201, place);
       }
       const place = project.places.find((p) => String(p.id) === parts[5]);
+      if (method === "DELETE") {
+        if (!place) return reply(404, {});
+        project.places = project.places.filter((p) => p !== place);
+        return reply(204);
+      }
       return reply(200, place ? Object.assign(place, data) : data);
     }
     if (method === "DELETE") {

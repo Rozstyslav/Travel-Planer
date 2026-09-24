@@ -455,6 +455,14 @@
           }
         },
         {
+          "name": "Remove place from project",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/api/projects/{{project_id}}/places/{{project_place_id}}/"
+          }
+        },
+        {
           "name": "Delete project without visited places",
           "request": {
             "method": "DELETE",

@@ -1698,6 +1698,11 @@ body.modal-open {
   overflow-wrap: anywhere;
   margin-top: 10px;
 }
+.remove-place-button {
+  color: #843c2c;
+  border-bottom-color: #d8b8ac;
+  margin-left: auto;
+}
 .trip-detail-footer {
   border-top: 1px solid var(--line);
   margin-top: 24px;

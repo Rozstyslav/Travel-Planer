@@ -2,7 +2,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 from travel.exceptions import PlaceNotFoundError, ProviderUnavailableError
-from travel.models import TravelProject, ProjectPlace
+from travel.models import TravelProject, ProjectPlace, SavedPlace
 from tests.fixtures import geo_place
 
 
@@ -87,7 +87,38 @@ class ProjectApiTests(APITestCase):
         place = ProjectPlace.objects.create(project=self.project, **geo_place())
         other = TravelProject.objects.create(name='Other', owner=self.user)
         self.assertEqual(self.client.get(f'/api/projects/{other.pk}/places/{place.pk}/').status_code, 404)
+        self.assertEqual(self.client.delete(f'/api/projects/{other.pk}/places/{place.pk}/').status_code, 404)
+        self.assertTrue(ProjectPlace.objects.filter(pk=place.pk).exists())
         self.assertEqual(self.client.get('/api/projects/999999/places/').status_code, 404)
+
+    def test_remove_place_only_affects_selected_trip(self):
+        place = ProjectPlace.objects.create(project=self.project, notes='My note', **geo_place())
+        remaining = ProjectPlace.objects.create(project=self.project, **geo_place('geo-2', 'osm:n:2'))
+        other = TravelProject.objects.create(name='Other', owner=self.user)
+        other_place = ProjectPlace.objects.create(project=other, **geo_place())
+        bookmark = SavedPlace.objects.create(owner=self.user, place_id='geo-1', source_id='osm:n:1', details=geo_place())
+        url = f'{self.places_url}{place.pk}/'
+        self.assertEqual(self.client.delete(url).status_code, 204)
+        self.assertFalse(ProjectPlace.objects.filter(pk=place.pk).exists())
+        self.assertEqual([p['id'] for p in self.client.get(self.project_url).data['places']], [remaining.pk])
+        self.assertTrue(ProjectPlace.objects.filter(pk=other_place.pk).exists())
+        self.assertTrue(SavedPlace.objects.filter(pk=bookmark.pk).exists())
+        self.assertEqual(self.client.delete(url).status_code, 404)
+
+    def test_remove_last_visited_place_keeps_empty_trip(self):
+        place = ProjectPlace.objects.create(project=self.project, visited=True, **geo_place())
+        self.assertEqual(self.client.delete(f'{self.places_url}{place.pk}/').status_code, 204)
+        response = self.client.get(self.project_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['places'], [])
+
+    @patch('travel.services.get_place_details', return_value=geo_place('replacement', 'osm:n:99'))
+    def test_remove_place_frees_capacity(self, details):
+        places = [ProjectPlace.objects.create(project=self.project, **geo_place(f'geo-{i}', f'osm:n:{i}'))
+                  for i in range(10)]
+        self.assertEqual(self.client.delete(f'{self.places_url}{places[0].pk}/').status_code, 204)
+        self.assertEqual(self.client.post(self.places_url, {'place_id': 'replacement'}, format='json').status_code, 201)
+        self.assertEqual(self.project.places.count(), 10)
 
     def test_archived_visits_do_not_prevent_deleting_empty_project(self):
         self.project.archived_places = [{'title': 'Old record', 'visited': True}]
