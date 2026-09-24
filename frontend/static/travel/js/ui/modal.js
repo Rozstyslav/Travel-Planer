@@ -66,15 +66,4 @@ export function initModal() {
     if (lastFocus?.isConnected) lastFocus.focus();
     else $("#main").focus({ preventScroll: true });
   });
-  modal.addEventListener("click", (e) => {
-    const r = modal.getBoundingClientRect();
-    if (
-      e.target === modal &&
-      (e.clientX < r.left ||
-        e.clientX > r.right ||
-        e.clientY < r.top ||
-        e.clientY > r.bottom)
-    )
-      closeModal();
-  });
 }

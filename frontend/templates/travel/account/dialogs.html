@@ -61,6 +61,10 @@
 <template id="account-notice">
   <h2 id="modal-title" data-text="title"></h2>
   <p class="modal-description" data-text="message"></p>
+  <p class="form-help" data-if="registration">
+    Already have an account? Sign in or
+    <button type="button" class="text-link title-button" data-action="forgot-password">reset your password</button>.
+  </p>
   <div class="form-actions">
     <button class="button button-outline" data-action="resend-verification">Resend verification</button>
     <button class="button button-dark" data-action="login">Sign in</button>

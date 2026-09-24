@@ -80,8 +80,8 @@ async function authRequest(path, payload) {
   return data;
 }
 
-function showEmailNotice(message) {
-  openModal(renderTemplate("account-notice", { title: "Check your email.", message }));
+function showEmailNotice(message, registration = false) {
+  openModal(renderTemplate("account-notice", { title: "Check your email.", message, registration }));
 }
 
 export function showRegister() {
@@ -89,7 +89,7 @@ export function showRegister() {
   const version = modalVersion;
   bindForm(async (form) => {
     const result = await authRequest("register/", Object.fromEntries(form));
-    if (version === modalVersion) showEmailNotice(result.detail);
+    if (version === modalVersion) showEmailNotice(result.detail, true);
   });
 }
 

@@ -20,7 +20,10 @@ from .tokens import password_reset_token_generator
 from .mailersend import EmailDeliveryError
 
 User = get_user_model()
-EMAIL_MESSAGE = {"detail": "If the email address is eligible, a verification email has been sent."}
+EMAIL_MESSAGE = {
+    "detail": "If this email address needs verification, a confirmation link has been sent. "
+    "Please check your inbox and spam folder."
+}
 RESET_MESSAGE = {"detail": "If the email exists, you will receive reset instructions."}
 EMAIL_ERROR = {"detail": "We could not send the email. Please try again later.", "code": "email_delivery_failed"}
 EMAIL_WAIT = {"detail": "Please wait a minute before requesting another verification email."}
