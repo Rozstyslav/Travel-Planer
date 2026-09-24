@@ -23,6 +23,13 @@ class RegistrationUnavailable(APIException):
     default_code = "registration_unavailable"
 
 
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("id", "username", "email")
+        read_only_fields = fields
+
+
 class RegisterSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150, validators=User._meta.get_field("username").validators)
     email = serializers.EmailField()

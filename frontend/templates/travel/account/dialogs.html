@@ -85,11 +85,21 @@
 </template>
 
 <template id="account-details">
-  <h2 id="modal-title">Your travel workspace.</h2>
+  <h2 id="modal-title">Your account.</h2>
   <p class="modal-description">
     Your trips and saved places belong to your account and are available when
     you sign in on another device.
   </p>
+  <dl class="account-profile">
+    <div><dt>Username</dt><dd id="account-username" data-text="username"></dd></div>
+    <div><dt>Email</dt><dd id="account-email" data-text="email"></dd></div>
+  </dl>
+  <p id="account-status" class="form-help" role="status">Updating account details…</p>
+  <button type="button" class="text-link title-button" data-action="account" hidden>Try again</button>
+  <div class="account-security">
+    <button type="button" class="button button-outline" data-action="change-password" data-bind-disabled="passwordUnavailable">Change password</button>
+    <p class="form-help">We’ll email you a link to choose a new password.</p>
+  </div>
   <form>
     <div class="form-actions">
       <button type="button" class="button button-outline" data-action="close">
@@ -98,4 +108,25 @@
       <button type="submit" class="button button-dark">Sign out ↗</button>
     </div>
   </form>
+</template>
+
+<template id="account-password-email">
+  <h2 id="modal-title" data-unless="sent">Change your password.</h2>
+  <h2 id="modal-title" data-if="sent">Check your email.</h2>
+  <p class="modal-description" data-unless="sent">
+    Send a password reset link to <strong class="account-email" data-text="email"></strong>.
+    Open the link to choose a new password.
+  </p>
+  <p class="modal-description" data-if="sent" data-text="message"></p>
+  <p class="form-help" data-if="sent">Check your inbox and spam folder. After changing your password, sign in again.</p>
+  <form data-unless="sent">
+    <div class="form-actions">
+      <button type="button" class="button button-outline" data-action="account">Back to account</button>
+      <button type="submit" class="button button-dark">Send reset link</button>
+    </div>
+  </form>
+  <div class="form-actions" data-if="sent">
+    <button type="button" class="button button-outline" data-action="account">Back to account</button>
+    <button type="button" class="button button-dark" data-action="close">Done</button>
+  </div>
 </template>

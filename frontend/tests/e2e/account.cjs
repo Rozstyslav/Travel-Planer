@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
     const page = await browser.newPage();
     const errors = [];
     const calls = [];
+    const user = { id: 1, username: "new-traveller", email: "test@example.com" };
     let failLogout = false;
     let failEmail = true;
     let delayRefresh = true;
@@ -31,8 +32,9 @@ const assert = require("node:assert/strict");
       }
       if (url.pathname === "/api/auth/login/") {
         if (data.password === "wrong-password") return reply(401, { detail: "Incorrect username/email or password." });
-        return reply(200, { access: delayRefresh ? "expired" : "fresh", refresh: "refresh-old" });
+        return reply(200, { access: delayRefresh ? "expired" : "fresh", refresh: "refresh-old", user });
       }
+      if (url.pathname === "/api/auth/me/") return reply(200, user);
       if (url.pathname === "/api/auth/token/refresh/") {
         await refreshPending;
         return reply(200, { access: "fresh", refresh: "refresh-new" });

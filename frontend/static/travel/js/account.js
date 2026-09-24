@@ -2,7 +2,7 @@ import { renderTemplate } from "travel/ui/templates.js";
 import { $ } from "travel/core/dom.js";
 import { state } from "travel/core/state.js";
 import { persist } from "travel/core/storage.js";
-import { fetchJSON, logoutSession, clearSession } from "travel/core/api.js";
+import { api, fetchJSON, logoutSession, clearSession } from "travel/core/api.js";
 import {
   openModal,
   closeModal,
@@ -45,9 +45,15 @@ export function showLogin() {
   });
 }
 
-export function showAccount() {
+export async function showAccount() {
   if (!state.tokens) return showLogin();
-  openModal(renderTemplate("account-details"));
+  const user = state.tokens.user;
+  const sessionVersion = state.sessionVersion;
+  openModal(renderTemplate("account-details", {
+    username: user?.username || "Loading…",
+    email: user ? user.email || "No email address" : "Loading…",
+    passwordUnavailable: !user?.email,
+  }));
   const version = modalVersion;
   bindForm(async () => {
     try {
@@ -58,6 +64,39 @@ export function showAccount() {
     } finally {
       if (version === modalVersion) closeModal();
     }
+  });
+  try {
+    const user = await api("auth/me/");
+    if (!state.tokens || sessionVersion !== state.sessionVersion) return;
+    state.tokens.user = user;
+    persist("tp-session-v1", state.tokens, "sessionStorage");
+    if (version !== modalVersion) return;
+    $("#account-username").textContent = user.username;
+    $("#account-email").textContent = user.email || "No email address";
+    $('[data-action="change-password"]', $("#modal")).disabled = !user.email;
+    $("#account-status").hidden = true;
+  } catch (error) {
+    if (version !== modalVersion) return;
+    if (!user) {
+      $("#account-username").textContent = "Unavailable";
+      $("#account-email").textContent = "Unavailable";
+    }
+    $("#account-status").textContent = error.message;
+    $('[data-action="account"]', $("#modal")).hidden = false;
+  }
+}
+
+export function showChangePassword() {
+  if (!state.tokens) return showLogin();
+  const email = state.tokens.user?.email;
+  if (!email) return showAccount();
+  openModal(renderTemplate("account-password-email", { email }));
+  const version = modalVersion;
+  const sessionVersion = state.sessionVersion;
+  bindForm(async () => {
+    const result = await authRequest("password-reset/", { email });
+    if (version !== modalVersion || sessionVersion !== state.sessionVersion) return;
+    openModal(renderTemplate("account-password-email", { email, sent: true, message: result.detail }));
   });
 }
 
@@ -157,6 +196,8 @@ export function initAccount() {
   });
   $("#account-button").addEventListener("click", showAccount);
   registerActions({
+    account: () => showAccount(),
+    "change-password": () => showChangePassword(),
     login: () => showLogin(),
     register: () => showRegister(),
     "forgot-password": () => showEmailForm(),

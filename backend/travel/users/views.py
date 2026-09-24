@@ -2,8 +2,8 @@ from ipaddress import ip_address
 
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework import generics, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -12,7 +12,7 @@ from rest_framework_simplejwt.views import TokenBlacklistView, TokenObtainPairVi
 from .email_service import PasswordResetEmailService
 from .models import AccountProfile, PasswordResetAttempt, PasswordResetConfirmation
 from .serializers import (
-    LoginSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer,
+    AccountSerializer, LoginSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer,
     RegisterSerializer, ResendVerificationSerializer, VerifyEmailSerializer,
 )
 from .services import send_verification_email, verify_email_token, is_resend_verification_throttled
@@ -103,6 +103,14 @@ class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth_login"
+
+
+class AccountView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AccountSerializer
+
+    def get_object(self):
+        return self.request.user
 
 
 class LogoutView(TokenBlacklistView):

@@ -78,6 +78,10 @@ it does not replace `auth.User` or modify existing trips.
 | `/api/auth/password-reset/confirm/` | `uid`, `token`, `password` |
 | `/api/auth/logout/` | `refresh` |
 
+`GET /api/auth/me/` requires an access token and returns only the current user's
+`id`, `username`, and `email`. The account dialog displays these details and can
+request a password reset link for that email using the existing reset flow.
+
 The existing `/api/auth/token/`, `/token/refresh/` and `/token/verify/` routes remain
 available. Refresh tokens rotate and are blacklisted on logout. Password changes
 invalidate both access and refresh tokens. Logout clears browser credentials;

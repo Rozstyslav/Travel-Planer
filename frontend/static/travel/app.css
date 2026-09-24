@@ -1642,6 +1642,32 @@ body.modal-open {
   display: grid;
   gap: 13px;
 }
+.account-profile {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 16px;
+}
+.account-profile dt {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.account-profile dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.account-email {
+  overflow-wrap: anywhere;
+}
+.account-security {
+  margin: 20px 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.account-security .form-help {
+  margin: 10px 0 0;
+}
 .place-row {
   display: grid;
   grid-template-columns: 75px 1fr;

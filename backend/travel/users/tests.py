@@ -61,6 +61,20 @@ class AccountFlowTests(APITestCase):
                 self.assertEqual(self.client.get("/api/projects/").status_code, 200)
                 self.client.credentials()
 
+    def test_account_details_require_authentication(self):
+        self.assertEqual(self.client.get('/api/auth/me/').status_code, 401)
+
+    def test_account_details_only_expose_current_users_profile_fields(self):
+        other = User.objects.create_user('other-user', 'other@example.com', self.password)
+        for user in (self.user, other):
+            tokens = self.login(username=user.username).data
+            self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+            response = self.client.get(f'/api/auth/me/?id={self.user.pk}')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data, {'id': user.pk, 'username': user.username, 'email': user.email})
+            self.assertEqual(self.client.patch('/api/auth/me/', {'email': 'changed@example.com'}, format='json').status_code, 405)
+            self.client.credentials()
+
     def test_invalid_and_inactive_credentials_are_rejected(self):
         self.assertEqual(self.login(username="missing").status_code, 401)
         self.assertEqual(self.login(username="existing-user", password="wrong").status_code, 401)

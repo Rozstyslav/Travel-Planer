@@ -12,6 +12,7 @@ const workspaceMock = require("./workspace-mock.cjs");
     let workspace = workspaceMock([], () => place);
     let expire = false;
     let failSaved = false;
+    let currentUser = null;
     page.on("pageerror", (error) => errors.push(error.message));
     await page.addInitScript(() => {
       localStorage.setItem("tp-trips-v2", JSON.stringify([{ id: 1, name: "Old guest trip", places: [] }]));
@@ -22,9 +23,11 @@ const workspaceMock = require("./workspace-mock.cjs");
       const path = new URL(request.url()).pathname;
       const reply = (status, json) => route.fulfill({ status, json });
       if (path === "/api/auth/login/") {
+        currentUser = { id: request.postDataJSON().username === "second" ? 2 : 1, username: request.postDataJSON().username, email: "traveller@example.com" };
         if (request.postDataJSON().username === "second") workspace = workspaceMock([], () => place);
-        return reply(200, { access: "test", refresh: "test" });
+        return reply(200, { access: "test", refresh: "test", user: currentUser });
       }
+      if (path === "/api/auth/me/") return reply(200, currentUser);
       if (path === "/api/auth/logout/") return reply(200, {});
       if (path === "/api/auth/token/refresh/") return reply(401, {});
       if (/^\/api\/(projects|saved)\//.test(path)) {
@@ -49,9 +52,9 @@ const workspaceMock = require("./workspace-mock.cjs");
       await page.waitForFunction(() => document.querySelector("#account-label").textContent === "Sign in" && !document.querySelector('dialog').open);
     };
     await page.goto(`${base}/#trips`);
-    await page.locator('#trips-grid [data-action="create-trip"]').waitFor();
+    await page.locator('#trips-view .section-heading [data-action="create-trip"]').waitFor();
     assert.doesNotMatch(await page.locator('#trips-grid').innerText(), /Old guest trip/);
-    await page.locator('#trips-grid [data-action="create-trip"]').click();
+    await page.locator('#trips-view .section-heading [data-action="create-trip"]').click();
     await login();
     await page.locator('dialog [name="name"]').fill("My collection");
     await page.locator('dialog button[type="submit"]').click();
@@ -60,7 +63,7 @@ const workspaceMock = require("./workspace-mock.cjs");
     await logout();
     assert.equal(await page.locator('.trip-card').count(), 0);
     await page.goto(`${base}/#saved`);
-    await page.locator('#saved-grid [data-action="login"]').waitFor();
+    await page.locator('#saved-view [data-workspace-note] [data-action="login"]').waitFor();
     assert.equal(await page.locator('#saved-grid .art-card').count(), 0);
     await page.evaluate(async () => {
       const { showAddPlace } = await import("travel/pages/trips.js");
