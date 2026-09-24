@@ -389,10 +389,31 @@ class MailerSendBackendTests(SimpleTestCase):
     @override_settings(MAILERSEND_API_KEY="")
     def test_missing_key_respects_fail_silently(self):
         message = mail.EmailMessage("Subject", "Body", to=["user@example.com"])
-        self.assertEqual(message.send(fail_silently=True), 0)
+        with self.assertLogs("travel.users.mailersend", level="WARNING") as logs:
+            self.assertEqual(message.send(fail_silently=True), 0)
+        self.assertIn("MAILERSEND_API_KEY is missing", str(logs.output))
         with self.assertRaises(EmailDeliveryError):
             mail.get_connection(fail_silently=False).send_messages([message])
         self.sender.assert_not_called()
+
+    @override_settings(DEFAULT_FROM_EMAIL="")
+    def test_missing_sender_is_identified_in_logs(self):
+        message = mail.EmailMessage("Subject", "Body", to=["user@example.com"])
+        with self.assertLogs("travel.users.mailersend", level="WARNING") as logs:
+            self.assertEqual(message.send(fail_silently=True), 0)
+        self.assertIn("MAILERSEND_FROM_EMAIL is missing", str(logs.output))
+        self.sender.assert_not_called()
+
+    def test_http_failure_logs_status_without_provider_details(self):
+        message = mail.EmailMessage("Subject", "Body", to=["user@example.com"])
+        for status in (401, 403, 422, 429, 500):
+            with self.subTest(status=status):
+                self.sender.return_value.status_code = status
+                self.sender.return_value._content = b'{"message": "private recipient or token"}'
+                with self.assertLogs("travel.users.mailersend", level="WARNING") as logs:
+                    self.assertEqual(message.send(fail_silently=True), 0)
+                self.assertIn(f"HTTP status={status}", str(logs.output))
+                self.assertNotIn("private recipient or token", str(logs.output))
 
     def test_multiple_reply_to_addresses_are_not_silently_dropped(self):
         message = mail.EmailMessage(

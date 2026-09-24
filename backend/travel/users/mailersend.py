@@ -29,6 +29,7 @@ class MailerSendEmailBackend(BaseEmailBackend):
         if not messages:
             return 0
         if not settings.MAILERSEND_API_KEY:
+            logger.warning("MailerSend delivery is not configured: MAILERSEND_API_KEY is missing.")
             if self.fail_silently:
                 return 0
             raise EmailDeliveryError("Email delivery is not configured.")
@@ -38,9 +39,13 @@ class MailerSendEmailBackend(BaseEmailBackend):
             if not message.recipients():
                 continue
             try:
+                sender = message.from_email or settings.DEFAULT_FROM_EMAIL
+                if not sender:
+                    logger.warning("MailerSend delivery is not configured: MAILERSEND_FROM_EMAIL is missing.")
+                    raise EmailDeliveryError("Email sender is not configured.")
                 builder = (
                     EmailBuilder()
-                    .from_email(**_contact(message.from_email or settings.DEFAULT_FROM_EMAIL))
+                    .from_email(**_contact(sender))
                     .to_many([_contact(address) for address in message.to])
                     .subject(message.subject)
                 )
@@ -70,9 +75,15 @@ class MailerSendEmailBackend(BaseEmailBackend):
                 with client.session:
                     response = client.emails.send(email)
                 if not response.get("id"):
+                    logger.warning("MailerSend response did not contain a message ID.")
                     raise EmailDeliveryError("MailerSend did not accept the message.")
             except Exception as error:
-                logger.warning("MailerSend delivery failed (%s)", type(error).__name__)
+                provider_response = getattr(error, "response", None)
+                status = getattr(provider_response, "status_code", None)
+                logger.warning(
+                    "MailerSend delivery failed (%s, HTTP status=%s)",
+                    type(error).__name__, status if isinstance(status, int) else "unavailable",
+                )
                 if not self.fail_silently:
                     raise EmailDeliveryError("Could not send email. Please try again later.") from error
             else:

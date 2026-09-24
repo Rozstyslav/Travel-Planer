@@ -102,6 +102,20 @@ fixed confirmation code, or email sent at module import time.
 Set `MAILERSEND_API_KEY`, `MAILERSEND_FROM_EMAIL` and `APP_BASE_URL` in `backend/.env`,
 then restart Django. See `.env.example`.
 
+For hosting, set these variables in the backend service's environment settings;
+the local `.env` is excluded from Git and Docker builds. Copy the API key as the
+value of `MAILERSEND_API_KEY`, and set `MAILERSEND_FROM_EMAIL` to the same sender
+used locally. Set `APP_BASE_URL` to the public HTTPS address of the website so
+verification/reset links point to the deployed application. Restart or redeploy
+the service after changing its environment. Old `RESEND_*` variables are not used.
+
+If sending works locally but fails on the host, check the server logs for
+`MAILERSEND_API_KEY is missing`, `MAILERSEND_FROM_EMAIL is missing`, or
+`MailerSend delivery failed (..., HTTP status=...)`. The logs omit provider
+response bodies, API keys and recipient addresses. If the settings match,
+compare the recipient and check the MailerSend account's sending limits;
+a trial/sandbox account can have recipient restrictions.
+
 Set `MAILERSEND_FROM_EMAIL` to an address on a domain verified in MailerSend,
 for example `Travel Planner <verify@your-domain.com>`. For initial testing,
 you can use your account's assigned trial domain, subject to its sending limits.
