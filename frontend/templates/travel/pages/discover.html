@@ -84,6 +84,7 @@
             ry="21"
             transform="rotate(-28 80 56)"
           />
+          <circle class="globe-beacon" cx="29" cy="80" r="4" />
           <circle class="globe-stop" cx="29" cy="80" r="4" />
           <path
             class="globe-pin"
@@ -91,6 +92,12 @@
           />
           <circle class="globe-pin-center" cx="122" cy="22" r="2.5" />
           <path class="globe-grid" d="M26 22v10m-5-5h10M132 82v8m-4-4h8" />
+          <g transform="rotate(-28 80 56)">
+            <path
+              class="globe-plane"
+              d="M8 0 2-2-3-8-6-8-3-1-8-2-9 0-8 2-3 1-6 8-3 8 2 2Z"
+            />
+          </g>
         </svg>
         <div>
           <span class="postcard-kicker">A WORLD TO DISCOVER</span>
@@ -251,6 +258,14 @@
       <button class="button button-dark" data-action="create-trip">
         Let’s make a plan <span aria-hidden="true">↗</span>
       </button>
+      <svg class="journey-map" viewBox="0 0 340 125" aria-hidden="true" focusable="false">
+        <path class="journey-route-guide" d="M20 95C65 95 65 20 130 30S205 115 245 65S285 20 320 30" />
+        <path class="journey-route-line" pathLength="1" d="M20 95C65 95 65 20 130 30S205 115 245 65S285 20 320 30" />
+        <circle class="journey-map-stop" cx="20" cy="95" r="5" />
+        <circle class="journey-map-stop" cx="320" cy="30" r="5" />
+        <circle class="journey-map-ring" cx="320" cy="30" r="11" />
+        <path class="journey-plane" d="M12 0 3-3-5-12-9-12-4-2-12-3-14 0-12 3-4 2-9 12-5 12 3 3Z" />
+      </svg>
     </div>
     <div class="journey-steps">
       <article>

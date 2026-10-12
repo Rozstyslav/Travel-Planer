@@ -733,6 +733,105 @@ em {
 .globe-pin-center {
   fill: var(--paper);
 }
+/* A short first flight; hovering or focusing the postcard sends it around again. */
+.globe-plane {
+  fill: var(--ink);
+  stroke: var(--white);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  offset-path: path("M145 56a65 21 0 1 1-130 0a65 21 0 1 1 130 0");
+  offset-distance: 0%;
+  offset-rotate: auto;
+  animation: globe-flight 4.8s linear;
+}
+.globe-beacon {
+  fill: none;
+  stroke: var(--olive);
+  stroke-width: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: destination-pulse 1.6s ease-out 3;
+}
+.destination-postcard:is(:hover, :focus-visible) .globe-plane {
+  animation: globe-flight-replay 4.8s linear infinite;
+}
+.destination-postcard:is(:hover, :focus-visible) .globe-beacon {
+  animation: destination-pulse 1.6s ease-out infinite;
+}
+.hero-copy > :is(.eyebrow, h1, .hero-description, .hero-actions) {
+  animation: journey-arrive 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.hero-copy h1 {
+  animation-delay: 0.08s;
+}
+.hero-copy .hero-description {
+  animation-delay: 0.16s;
+}
+.hero-copy .hero-actions {
+  animation-delay: 0.24s;
+}
+.hero-visual .photo-frame {
+  animation: journey-arrive 1s 0.12s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.serif-word:after {
+  transform-origin: left center;
+  animation: curiosity-line 0.9s 0.4s ease-out backwards;
+}
+.travel-stamp b {
+  display: block;
+  animation: stamp-turn 1.4s 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hero-visual:hover .travel-stamp b {
+  transform: rotate(90deg);
+}
+@keyframes globe-flight {
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes globe-flight-replay {
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes destination-pulse {
+  from {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3.5);
+  }
+}
+@keyframes journey-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes curiosity-line {
+  from {
+    transform: rotate(-3deg) scaleX(0);
+  }
+  to {
+    transform: rotate(-3deg) scaleX(1);
+  }
+}
+@keyframes stamp-turn {
+  from {
+    transform: rotate(-110deg);
+  }
+  to {
+    transform: rotate(0);
+  }
+}
 .destination-postcard .postcard-kicker {
   font-size: 6.5px;
   font-weight: 700;
@@ -2518,7 +2617,123 @@ body.modal-open {
     font-size: 10px;
   }
 }
+.motion-reveal {
+  opacity: 0;
+  translate: 0 48px;
+  transition:
+    opacity 0.75s var(--reveal-delay, 0ms),
+    translate 0.95s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+.motion-reveal.is-visible {
+  opacity: 1;
+  translate: 0 0;
+}
+.motion-hero {
+  --hero-x: 0;
+  --hero-y: 0;
+}
+.motion-hero .photo-frame {
+  transform: perspective(1100px) rotateX(calc(var(--hero-y) * -5deg)) rotateY(calc(var(--hero-x) * 7deg));
+  transition: transform 0.45s ease-out;
+}
+.motion-hero .hero-photo,
+.motion-hero:hover .hero-photo {
+  transform: scale(1.08) translate(calc(var(--hero-x) * -10px), calc(var(--hero-y) * -10px));
+  transition: transform 0.6s ease-out;
+}
+.motion-hero .travel-stamp {
+  translate: calc(var(--hero-x) * -18px) calc(var(--hero-y) * -14px);
+  transition: translate 0.7s ease-out;
+}
+.motion-hero .destination-postcard {
+  translate: calc(var(--hero-x) * 22px) calc(var(--hero-y) * 18px);
+  transition: translate 0.5s ease-out, transform 0.3s;
+}
+.journey-map {
+  display: block;
+  width: min(100%, 340px);
+  height: auto;
+  margin-top: 24px;
+  overflow: visible;
+}
+.journey-route-guide,
+.journey-route-line,
+.journey-map-ring {
+  fill: none;
+  stroke: var(--olive);
+  stroke-width: 1.5;
+}
+.journey-route-guide {
+  stroke-dasharray: 3 7;
+  opacity: 0.3;
+}
+.journey-map-stop {
+  fill: var(--olive);
+}
+.journey-map-ring {
+  opacity: 0.4;
+}
+.journey-plane {
+  fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  offset-path: path("M20 95C65 95 65 20 130 30S205 115 245 65S285 20 320 30");
+  offset-distance: 100%;
+  offset-rotate: auto;
+}
+.journey-heading.motion-reveal.is-visible .journey-route-line {
+  stroke-dasharray: 1;
+  animation: journey-draw 2.4s 0.2s ease-in-out backwards;
+}
+.journey-heading.motion-reveal.is-visible .journey-plane {
+  animation: journey-flight 2.4s 0.2s ease-in-out backwards;
+}
+.inner-view:not([hidden]) {
+  animation: journey-arrive 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#modal[open] {
+  animation: dialog-arrive 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#modal[open]::backdrop {
+  animation: backdrop-arrive 0.3s ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .art-card,
+  .trip-card {
+    transition: opacity 0.75s var(--reveal-delay, 0ms), translate 0.95s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms), transform 0.3s, box-shadow 0.3s;
+  }
+  .art-card:hover,
+  .trip-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 28px #28362912;
+  }
+}
+@keyframes journey-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes journey-flight {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+@keyframes dialog-arrive {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes backdrop-arrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
+  .motion-reveal {
+    opacity: 1;
+    translate: none;
+  }
+  .art-card:hover,
+  .trip-card:hover {
+    transform: none;
+  }
   html {
     scroll-behavior: auto;
   }

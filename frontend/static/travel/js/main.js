@@ -7,6 +7,7 @@ import { initDiscover } from "travel/pages/discover.js";
 import { initTrips } from "travel/pages/trips.js";
 import { initSaved } from "travel/pages/saved.js";
 import { route, navigate } from "travel/router.js";
+import { initMotion } from "travel/ui/motion.js";
 
 initActions();
 initModal();
@@ -28,3 +29,4 @@ registerActions({
 });
 window.addEventListener("hashchange", route);
 route();
+initMotion();
